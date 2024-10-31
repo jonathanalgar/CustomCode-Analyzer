@@ -12,6 +12,7 @@ using Xunit.Abstractions;
 
 namespace CustomCode_Analyzer.Tests
 {
+
     public class DetailedTestLogger : ITestOutputHelper
     {
         private readonly TestContext _testContext;
@@ -37,7 +38,6 @@ namespace CustomCode_Analyzer.Tests
 
         public override string ToString() => _output.ToString();
     }
-
 
 
     public static class CSharpAnalyzerVerifier<TAnalyzer>
@@ -162,7 +162,13 @@ public class TestClass
 interface ITestInterface 
 {
     void TestMethod();
+}
+
+public class TestImplementation : ITestInterface 
+{
+    public void TestMethod() { }
 }";
+
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NonPublicInterface)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface");
@@ -180,10 +186,25 @@ interface ITestInterface
 public interface ITestInterface 
 {
     void _TestMethod();
+}
+
+public class TestImplementation : ITestInterface 
+{
+    public void _TestMethod() { }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-                .WithSpan(5, 5, 5, 24)
-                .WithArguments("Method", "_TestMethod");
+
+            var expected = new[]
+            {
+        // Warning for the interface method
+        CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
+            .WithSpan(5, 5, 5, 24)
+            .WithArguments("Method", "_TestMethod"),
+            
+        // Warning for the implementing method
+        CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
+            .WithSpan(10, 5, 10, 34)
+            .WithArguments("Method", "_TestMethod")
+    };
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }
@@ -204,7 +225,18 @@ public interface IFirstInterface
 public interface ISecondInterface 
 {
     void TestMethod();
+}
+
+public class FirstImplementation : IFirstInterface 
+{
+    public void TestMethod() { }
+}
+
+public class SecondImplementation : ISecondInterface 
+{
+    public void TestMethod() { }
 }";
+
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("IFirstInterface, ISecondInterface");
@@ -229,6 +261,94 @@ public interface ITestInterface
         }
 
         [TestMethod]
+        public async Task EmptyInterface_ReportsWarning()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSInterface]
+public interface ITestInterface 
+{
+}";
+
+            var expected = new[] {
+        // Empty interface warning
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.EmptyInterface)
+            .WithSpan(3, 18, 3, 32)  // Changed end column from 31 to 32
+            .WithArguments("ITestInterface"),
+            
+        // No implementing class warning
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.NoImplementingClass)
+            .WithSpan(2, 1, 5, 2)
+            .WithArguments("ITestInterface")
+    };
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+
+        [TestMethod]
+        public async Task NoParameterlessConstructor_ReportsWarning()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSInterface]
+public interface ITestInterface 
+{
+    void TestMethod();
+}
+
+public class TestImplementation : ITestInterface 
+{
+    public TestImplementation(int value)
+    {
+    }
+
+    public void TestMethod() { }
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.NoParameterlessConstructor)
+                .WithSpan(8, 14, 8, 32)  // Changed end column from 31 to 32
+                .WithArguments("TestImplementation");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+        [TestMethod]
+        public async Task MultipleImplementations_ReportsWarning()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSInterface]
+public interface ITestInterface 
+{
+    void TestMethod();
+}
+
+public class FirstImplementation : ITestInterface 
+{
+    public void TestMethod() { }
+}
+
+public class SecondImplementation : ITestInterface 
+{
+    public void TestMethod() { }
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.MultipleImplementations)
+                .WithSpan(2, 1, 6, 2)
+                .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+        [TestMethod]
         public async Task ValidCode_NoWarnings()
         {
             Assert.IsNotNull(TestContext, "TestContext should not be null");
@@ -238,8 +358,33 @@ public interface ITestInterface
 public interface ITestInterface 
 {
     void ValidMethod();
+}
+
+public class TestImplementation : ITestInterface 
+{
+    public void ValidMethod() { }
 }";
+
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext);
+        }
+
+        [TestMethod]
+        public async Task NoImplementingClass_ReportsError()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSInterface]
+public interface ITestInterface 
+{
+    void TestMethod();
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoImplementingClass)
+                .WithSpan(2, 1, 6, 2)
+                .WithArguments("ITestInterface");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }
     }
 }
