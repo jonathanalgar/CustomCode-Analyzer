@@ -7,33 +7,78 @@ using System.Threading.Tasks;
 using static Analyzer;
 using Microsoft.CodeAnalysis.Testing.Verifiers;
 using System.Collections.Immutable;
+using System.Text;
+using Xunit.Abstractions;
 
 namespace CustomCode_Analyzer.Tests
 {
+    public class DetailedTestLogger : ITestOutputHelper
+    {
+        private readonly TestContext _testContext;
+        private readonly StringBuilder _output = new();
+
+        public DetailedTestLogger(TestContext testContext)
+        {
+            _testContext = testContext;
+        }
+
+        public void WriteLine(string message)
+        {
+            _output.AppendLine(message);
+            _testContext.WriteLine(message);
+        }
+
+        public void WriteLine(string format, params object[] args)
+        {
+            WriteLine(string.Format(format, args));
+        }
+
+        public void Clear() => _output.Clear();
+
+        public override string ToString() => _output.ToString();
+    }
+
+
+
     public static class CSharpAnalyzerVerifier<TAnalyzer>
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
         public static DiagnosticResult Diagnostic(string diagnosticId)
             => CSharpAnalyzerVerifier<TAnalyzer, MSTestVerifier>.Diagnostic(diagnosticId);
 
-        public static async Task VerifyAnalyzerAsync(string source, params DiagnosticResult[] expected)
+        public static async Task VerifyAnalyzerAsync(string source, TestContext testContext, params DiagnosticResult[] expected)
         {
-            var test = new Test { TestCode = source };
+            var logger = new DetailedTestLogger(testContext);
+            var test = new Test(logger) { TestCode = source };
+
+            logger.WriteLine($"Running test: {testContext.TestName}");
+            logger.WriteLine("\nAnalyzing source code:");
+            logger.WriteLine(source);
 
             test.TestState.Sources.Add(@"
-            using System;
-            [AttributeUsage(AttributeTargets.Interface)]
-            public class OSInterfaceAttribute : Attribute { }
-        ");
+                using System;
+                [AttributeUsage(AttributeTargets.Interface)]
+                public class OSInterfaceAttribute : Attribute { }
+            ");
 
             test.ExpectedDiagnostics.AddRange(expected);
+
+            logger.WriteLine("\nExpected diagnostics:");
+            foreach (var diagnostic in expected)
+            {
+                logger.WriteLine($"- {diagnostic.Id}: {diagnostic.MessageFormat} at {diagnostic.Spans[0]}");
+            }
+
             await test.RunAsync();
         }
 
         private class Test : CSharpAnalyzerTest<TAnalyzer, MSTestVerifier>
         {
-            public Test()
+            private readonly ITestOutputHelper _logger;
+
+            public Test(ITestOutputHelper logger)
             {
+                _logger = logger;
                 ReferenceAssemblies = new ReferenceAssemblies(
                     "net8.0",
                     new PackageIdentity(
@@ -63,6 +108,7 @@ namespace CustomCode_Analyzer.Tests
         }
     }
 
+
     public static class CSharpVerifierHelper
     {
         public static ImmutableDictionary<string, ReportDiagnostic> NullableWarnings
@@ -84,9 +130,13 @@ namespace CustomCode_Analyzer.Tests
     [TestClass]
     public class AnalyzerTests
     {
+        public TestContext? TestContext { get; set; }
+
         [TestMethod]
         public async Task TodoComment_ReportsWarning()
         {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
             var test = @"
 public class TestClass 
 {
@@ -99,12 +149,14 @@ public class TestClass
                 .WithSpan(4, 5, 4, 35)
                 .WithArguments("TestMethod");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }
 
         [TestMethod]
         public async Task NonPublicOSInterface_ReportsWarning()
         {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
             var test = @"
 [OSInterface]
 interface ITestInterface 
@@ -115,12 +167,14 @@ interface ITestInterface
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }
 
         [TestMethod]
         public async Task UnderscorePrefix_ReportsWarning()
         {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
             var test = @"
 [OSInterface]
 public interface ITestInterface 
@@ -131,12 +185,14 @@ public interface ITestInterface
                 .WithSpan(5, 5, 5, 24)
                 .WithArguments("Method", "_TestMethod");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }
 
         [TestMethod]
         public async Task MultipleOSInterfaces_ReportsWarning()
         {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
             var test = @"
 [OSInterface]
 public interface IFirstInterface 
@@ -153,13 +209,14 @@ public interface ISecondInterface
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("IFirstInterface, ISecondInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }
-
 
         [TestMethod]
         public async Task NoOSInterface_ReportsWarning()
         {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
             var test = @"
 public interface ITestInterface 
 {
@@ -168,19 +225,21 @@ public interface ITestInterface
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoSingleInterface)
                 .WithSpan(2, 1, 5, 2);
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }
 
         [TestMethod]
         public async Task ValidCode_NoWarnings()
         {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
             var test = @"
 [OSInterface]
 public interface ITestInterface 
 {
     void ValidMethod();
 }";
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext);
         }
     }
 }

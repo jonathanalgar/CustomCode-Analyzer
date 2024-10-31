@@ -25,13 +25,13 @@ public class Analyzer : DiagnosticAnalyzer
     }
 
     private static readonly DiagnosticDescriptor TodoRule = new(
-            DiagnosticIds.TodoComment,
-            title: "TODO comment detected",
-            messageFormat: "TODO comment detected in method '{0}' - create a work item instead",
-            category: Categories.Documentation,
-            defaultSeverity: DiagnosticSeverity.Warning,
-            isEnabledByDefault: true,
-            description: "TODO comments should be tracked in work items.");
+        DiagnosticIds.TodoComment,
+        title: "TODO comment detected",
+        messageFormat: "TODO comment detected in method '{0}' - create a work item instead",
+        category: Categories.Documentation,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "TODO comments should be tracked in work items.");
 
     private static readonly DiagnosticDescriptor NoSingleInterfaceRule = new(
         DiagnosticIds.NoSingleInterface,
@@ -40,7 +40,8 @@ public class Analyzer : DiagnosticAnalyzer
         category: Categories.Design,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        customTags: WellKnownDiagnosticTags.CompilationEnd);
+        customTags: WellKnownDiagnosticTags.CompilationEnd,
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05002");
 
     private static readonly DiagnosticDescriptor ManyInterfacesRule = new(
         DiagnosticIds.ManyInterfaces,
@@ -49,7 +50,8 @@ public class Analyzer : DiagnosticAnalyzer
         category: Categories.Design,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        customTags: WellKnownDiagnosticTags.CompilationEnd);
+        customTags: WellKnownDiagnosticTags.CompilationEnd,
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05002");
 
     private static readonly DiagnosticDescriptor InterfaceRule = new(
         DiagnosticIds.NonPublicInterface,
@@ -57,7 +59,8 @@ public class Analyzer : DiagnosticAnalyzer
         messageFormat: "The OSInterface '{0}' must be public",
         category: Categories.Design,
         defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05002");
 
     private static readonly DiagnosticDescriptor NoUnderscoreRule = new(
         DiagnosticIds.NameBeginsWithUnderscore,
@@ -65,7 +68,8 @@ public class Analyzer : DiagnosticAnalyzer
         messageFormat: "The {0} name '{1}' should not begin with underscores",
         category: Categories.Naming,
         defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05002");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(TodoRule, InterfaceRule, NoSingleInterfaceRule, ManyInterfacesRule, NoUnderscoreRule);
