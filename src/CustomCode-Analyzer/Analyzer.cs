@@ -19,6 +19,10 @@ public class Analyzer : DiagnosticAnalyzer
         public const string NoParameterlessConstructor = "NoParameterlessConstructor";
         public const string EmptyInterface = "EmptyInterface";
         public const string MultipleImplementations = "MultipleImplementations";
+        public const string NonPublicImplementation = "NonPublicImplementation";
+        public const string NonPublicStruct = "NonPublicStruct";
+        public const string NonPublicStructureField = "NonPublicStructureField";
+        public const string NonPublicIgnoredField = "NonPublicIgnoredField";
     }
 
     public static class Categories
@@ -117,6 +121,46 @@ public class Analyzer : DiagnosticAnalyzer
         customTags: WellKnownDiagnosticTags.CompilationEnd,
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05008");
 
+        private static readonly DiagnosticDescriptor NonPublicImplementationRule = new(
+        DiagnosticIds.NonPublicImplementation,
+        title: "Non-public implementation of OSInterface",
+        messageFormat: "The class that implements the interface decorated with OSInterface '{0}' must be public",
+        category: Categories.Design,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Classes implementing interfaces decorated with OSInterface must be public.",
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05018");
+
+    private static readonly DiagnosticDescriptor NonPublicStructRule = new(
+        DiagnosticIds.NonPublicStruct,
+        title: "Non-public OSStructure",
+        messageFormat: "The struct decorated with OSStructure '{0}' is not public",
+        category: Categories.Design,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Structs decorated with OSStructure must be public.",
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05010");
+
+    private static readonly DiagnosticDescriptor NonPublicStructureFieldRule = new(
+        DiagnosticIds.NonPublicStructureField,
+        title: "Non-public OSStructureField",
+        messageFormat: "The property/field decorated by OSStructureField '{0}' in struct {1} is not public",
+        category: Categories.Design,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Properties and fields decorated with OSStructureField must be public.",
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05011");
+
+    private static readonly DiagnosticDescriptor NonPublicIgnoredFieldRule = new(
+        DiagnosticIds.NonPublicIgnoredField,
+        title: "Non-public OSIgnore field",
+        messageFormat: "The property/field decorated by OSIgnore '{0}' in struct '{1}' is not public",
+        category: Categories.Design,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Properties and fields decorated with OSIgnore must be public.",
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05012");
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(
             TodoRule,
@@ -127,7 +171,11 @@ public class Analyzer : DiagnosticAnalyzer
             NoImplementingClassRule,
             NoParameterlessConstructorRule,
             EmptyInterfaceRule,
-            MultipleImplementationsRule);
+            MultipleImplementationsRule,
+            NonPublicImplementationRule,
+            NonPublicStructRule,
+            NonPublicStructureFieldRule,
+            NonPublicIgnoredFieldRule);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -137,6 +185,94 @@ public class Analyzer : DiagnosticAnalyzer
         context.RegisterCompilationStartAction(compilationContext =>
         {
             var osInterfaces = new ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)>();
+
+            // Register for struct analysis
+            compilationContext.RegisterSymbolAction(context =>
+            {
+                if (context.Symbol is INamedTypeSymbol typeSymbol &&
+                    typeSymbol.TypeKind == TypeKind.Struct)
+                {
+                    var hasOSStructureAttribute = typeSymbol.GetAttributes()
+                        .Any(attr => attr.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure");
+
+                    if (hasOSStructureAttribute)
+                    {
+                        // Check struct accessibility
+                        var structDeclaration = typeSymbol.DeclaringSyntaxReferences
+                            .FirstOrDefault()?.GetSyntax() as StructDeclarationSyntax;
+
+                        if (structDeclaration != null && !typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
+                        {
+                            context.ReportDiagnostic(
+                                Diagnostic.Create(
+                                    NonPublicStructRule,
+                                    structDeclaration.Identifier.GetLocation(),
+                                    typeSymbol.Name));
+                        }
+
+                        // Check fields and properties
+                        foreach (var member in typeSymbol.GetMembers())
+                        {
+                            Location GetMemberLocation()
+                            {
+                                var syntax = member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                                if (syntax == null) return Location.None;
+
+                                if (member is IFieldSymbol)
+                                {
+                                    var variableDeclarator = syntax as VariableDeclaratorSyntax;
+                                    if (variableDeclarator != null)
+                                    {
+                                        return variableDeclarator.Identifier.GetLocation();
+                                    }
+                                }
+                                else if (member is IPropertySymbol && syntax is PropertyDeclarationSyntax propertyDeclaration)
+                                {
+                                    return propertyDeclaration.Identifier.GetLocation();
+                                }
+                                return Location.None;
+                            }
+
+                            // Check for OSStructureField
+                            var hasOSStructureFieldAttribute = member.GetAttributes()
+                                .Any(attr => attr.AttributeClass?.Name is "OSStructureFieldAttribute" or "OSStructureField");
+
+                            if (hasOSStructureFieldAttribute && !member.DeclaredAccessibility.HasFlag(Accessibility.Public))
+                            {
+                                var location = GetMemberLocation();
+                                if (!location.Equals(Location.None))
+                                {
+                                    context.ReportDiagnostic(
+                                        Diagnostic.Create(
+                                            NonPublicStructureFieldRule,
+                                            location,
+                                            member.Name,
+                                            typeSymbol.Name));
+                                }
+                            }
+
+                            // Check for OSIgnore
+                            var hasOSIgnoreAttribute = member.GetAttributes()
+                                .Any(attr => attr.AttributeClass?.Name is "OSIgnoreAttribute" or "OSIgnore");
+
+                            if (hasOSIgnoreAttribute && !member.DeclaredAccessibility.HasFlag(Accessibility.Public))
+                            {
+                                var location = GetMemberLocation();
+                                if (!location.Equals(Location.None))
+                                {
+                                    context.ReportDiagnostic(
+                                        Diagnostic.Create(
+                                            NonPublicIgnoredFieldRule,
+                                            location,
+                                            member.Name,
+                                            typeSymbol.Name));
+                                }
+                            }
+                        }
+                    }
+                }
+            }, SymbolKind.NamedType);
+
 
             // Register for interface analysis
             compilationContext.RegisterSymbolAction(context =>
@@ -236,6 +372,22 @@ public class Analyzer : DiagnosticAnalyzer
 
                         if (hasOSInterfaceAttribute)
                         {
+                            // Check if the class is public
+                            if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
+                            {
+                                var classDeclaration = typeSymbol.DeclaringSyntaxReferences
+                                    .FirstOrDefault()?.GetSyntax() as ClassDeclarationSyntax;
+
+                                if (classDeclaration != null)
+                                {
+                                    context.ReportDiagnostic(
+                                        Diagnostic.Create(
+                                            NonPublicImplementationRule,
+                                            classDeclaration.Identifier.GetLocation(),
+                                            implementedInterface.Name));
+                                }
+                            }
+
                             // Check if the class has a public parameterless constructor
                             var hasPublicParameterlessConstructor = typeSymbol.Constructors.Any(c =>
                                 c.DeclaredAccessibility == Accessibility.Public &&

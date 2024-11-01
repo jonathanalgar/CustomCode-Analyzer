@@ -55,11 +55,22 @@ namespace CustomCode_Analyzer.Tests
             logger.WriteLine("\nAnalyzing source code:");
             logger.WriteLine(source);
 
+            // Add all required attribute definitions
             test.TestState.Sources.Add(@"
-                using System;
-                [AttributeUsage(AttributeTargets.Interface)]
-                public class OSInterfaceAttribute : Attribute { }
-            ");
+        using System;
+        
+        [AttributeUsage(AttributeTargets.Interface)]
+        public class OSInterfaceAttribute : Attribute { }
+        
+        [AttributeUsage(AttributeTargets.Struct)]
+        public class OSStructureAttribute : Attribute { }
+        
+        [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+        public class OSStructureFieldAttribute : Attribute { }
+        
+        [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+        public class OSIgnoreAttribute : Attribute { }
+    ");
 
             test.ExpectedDiagnostics.AddRange(expected);
 
@@ -344,6 +355,119 @@ public class SecondImplementation : ITestInterface
                 .Diagnostic(DiagnosticIds.MultipleImplementations)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+        [TestMethod]
+        public async Task NonPublicImplementingClass_ReportsError()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSInterface]
+public interface ITestInterface 
+{
+    void TestMethod();
+}
+
+internal class TestImplementation : ITestInterface  // internal instead of public
+{
+    public void TestMethod() { }
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.NonPublicImplementation)
+                .WithSpan(8, 16, 8, 34)
+                .WithArguments("ITestInterface");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+        [TestMethod]
+        public async Task NonPublicStruct_ReportsError()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSStructure]
+internal struct TestStruct  // internal instead of public
+{
+    public int Value;
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.NonPublicStruct)
+                .WithSpan(3, 17, 3, 27)
+                .WithArguments("TestStruct");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+        [TestMethod]
+        public async Task NonPublicIgnoredField_ReportsError()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSStructure]
+public struct TestStruct
+{
+    [OSIgnore]
+    private int IgnoredValue;  // private instead of public
+
+    [OSIgnore]
+    internal string IgnoredName { get; set; }  // internal instead of public
+}";
+
+            var expected = new[]
+            {
+        // Error for private field
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.NonPublicIgnoredField)
+            .WithSpan(6, 17, 6, 29)
+            .WithArguments("IgnoredValue", "TestStruct"),
+
+        // Error for internal property
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.NonPublicIgnoredField)
+            .WithSpan(9, 21, 9, 32)
+            .WithArguments("IgnoredName", "TestStruct")
+    };
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+        [TestMethod]
+        public async Task NonPublicStructureField_ReportsError()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSStructure]
+public struct TestStruct
+{
+    [OSStructureField]
+    private int Value;  // private instead of public
+
+    [OSStructureField]
+    internal string Name { get; set; }  // internal instead of public
+}";
+
+            var expected = new[]
+            {
+        // Error for private field
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.NonPublicStructureField)
+            .WithSpan(6, 17, 6, 22)
+            .WithArguments("Value", "TestStruct"),
+
+        // Error for internal property
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.NonPublicStructureField)
+            .WithSpan(9, 21, 9, 25)
+            .WithArguments("Name", "TestStruct")
+    };
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }

@@ -11,3 +11,7 @@ NoImplementingClass | Design | Warning | Checks that OSInterface has implementin
 NoParameterlessConstructor | Design | Warning | Checks that OSInterface has implementing class
 EmptyInterface | Design | Warning | The interface decorated with OSInterface must define at least one method
 MultipleImplementations | Design | Warning | Multiple implementations of OSInterface
+NonPublicImplementation | Design | Warning | Implementation of OSInterface must be public
+NonPublicStruct | Design | Warning | Structs decorated with OSStructure must be public
+NonPublicStructureField | Design | Warning | Fields in structs decorated with OSStructure must be public
+NonPublicIgnoredField | Design | Warning | Properties and fields decorated with OSIgnore must be public",
