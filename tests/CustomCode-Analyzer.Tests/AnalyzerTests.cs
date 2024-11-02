@@ -56,6 +56,7 @@ namespace CustomCode_Analyzer.Tests
             logger.WriteLine(source);
 
             // Add all required attribute definitions
+            // Add all required attribute definitions
             test.TestState.Sources.Add(@"
         using System;
         
@@ -63,7 +64,10 @@ namespace CustomCode_Analyzer.Tests
         public class OSInterfaceAttribute : Attribute { }
         
         [AttributeUsage(AttributeTargets.Struct)]
-        public class OSStructureAttribute : Attribute { }
+        public class OSStructureAttribute : Attribute 
+        { 
+            public string Name { get; set; }
+        }
         
         [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
         public class OSStructureFieldAttribute : Attribute { }
@@ -71,6 +75,7 @@ namespace CustomCode_Analyzer.Tests
         [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
         public class OSIgnoreAttribute : Attribute { }
     ");
+
 
             test.ExpectedDiagnostics.AddRange(expected);
 
@@ -221,6 +226,32 @@ public class TestImplementation : ITestInterface
         }
 
         [TestMethod]
+        public async Task DuplicateExplicitStructureName_ReportsWarning()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSStructure(Name = ""MyStructure"")]  // Using escaped quotes
+public struct Structure1
+{
+    public int Value;
+}
+
+[OSStructure(Name = ""MyStructure"")]  // Using escaped quotes
+public struct Structure2
+{
+    public float Value;
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.DuplicateStructureName)
+                .WithSpan(3, 15, 3, 25)
+                .WithArguments("Structure1, Structure2", "MyStructure");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+        [TestMethod]
         public async Task MultipleOSInterfaces_ReportsWarning()
         {
             Assert.IsNotNull(TestContext, "TestContext should not be null");
@@ -360,6 +391,27 @@ public class SecondImplementation : ITestInterface
         }
 
         [TestMethod]
+        public async Task NoPublicMembers_ReportsError()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSStructure]
+public struct TestStruct
+{
+    private int PrivateValue;
+    internal string InternalProperty { get; set; }
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.NoPublicMembers)
+                .WithSpan(3, 15, 3, 25)
+                .WithArguments("TestStruct");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+        [TestMethod]
         public async Task NonPublicImplementingClass_ReportsError()
         {
             Assert.IsNotNull(TestContext, "TestContext should not be null");
@@ -413,6 +465,8 @@ internal struct TestStruct  // internal instead of public
 [OSStructure]
 public struct TestStruct
 {
+    public int PublicValue;  // Added public member
+
     [OSIgnore]
     private int IgnoredValue;  // private instead of public
 
@@ -425,13 +479,13 @@ public struct TestStruct
         // Error for private field
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicIgnoredField)
-            .WithSpan(6, 17, 6, 29)
+            .WithSpan(8, 17, 8, 29)
             .WithArguments("IgnoredValue", "TestStruct"),
 
         // Error for internal property
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicIgnoredField)
-            .WithSpan(9, 21, 9, 32)
+            .WithSpan(11, 21, 11, 32)
             .WithArguments("IgnoredName", "TestStruct")
     };
 
@@ -447,6 +501,8 @@ public struct TestStruct
 [OSStructure]
 public struct TestStruct
 {
+    public int PublicValue;  // Added public member
+
     [OSStructureField]
     private int Value;  // private instead of public
 
@@ -459,13 +515,13 @@ public struct TestStruct
         // Error for private field
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicStructureField)
-            .WithSpan(6, 17, 6, 22)
+            .WithSpan(8, 17, 8, 22)
             .WithArguments("Value", "TestStruct"),
 
         // Error for internal property
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicStructureField)
-            .WithSpan(9, 21, 9, 25)
+            .WithSpan(11, 21, 11, 25)
             .WithArguments("Name", "TestStruct")
     };
 
@@ -507,6 +563,50 @@ public interface ITestInterface
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoImplementingClass)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+        [TestMethod]
+        public async Task ReferenceParameter_ReportsWarning()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSInterface]
+public interface ITestInterface 
+{
+    void UpdateValue(ref int value);
+    void GetValue(out string text);
+    void ReadValue(in double number);
+}
+
+public class TestImplementation : ITestInterface 
+{
+    public void UpdateValue(ref int value) { value += 1; }
+    public void GetValue(out string text) { text = ""test""; }
+    public void ReadValue(in double number) { }
+}";
+
+            var expected = new[]
+            {
+        // Warning for ref parameter
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.ReferenceParameter)
+            .WithSpan(5, 22, 5, 35)
+            .WithArguments("value", "UpdateValue"),
+
+        // Warning for out parameter
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.ReferenceParameter)
+            .WithSpan(6, 19, 6, 34)
+            .WithArguments("text", "GetValue"),
+
+        // Warning for in parameter
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.ReferenceParameter)
+            .WithSpan(7, 20, 7, 36)
+            .WithArguments("number", "ReadValue")
+    };
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }

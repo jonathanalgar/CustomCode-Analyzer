@@ -14,4 +14,7 @@ MultipleImplementations | Design | Warning | Multiple implementations of OSInter
 NonPublicImplementation | Design | Warning | Implementation of OSInterface must be public
 NonPublicStruct | Design | Warning | Structs decorated with OSStructure must be public
 NonPublicStructureField | Design | Warning | Fields in structs decorated with OSStructure must be public
-NonPublicIgnoredField | Design | Warning | Properties and fields decorated with OSIgnore must be public",
+NonPublicIgnoredField | Design | Warning | Properties and fields decorated with OSIgnore must be public
+NoPublicMembers | Design | Warning | Checks that OSInterface has public members
+DuplicateStructureName | Design | Warning | Checks that OSStructure has unique names
+ReferenceParameter | Design | Warning | Checks that OSInterface has reference parameters

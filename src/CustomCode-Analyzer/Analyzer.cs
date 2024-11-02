@@ -23,6 +23,9 @@ public class Analyzer : DiagnosticAnalyzer
         public const string NonPublicStruct = "NonPublicStruct";
         public const string NonPublicStructureField = "NonPublicStructureField";
         public const string NonPublicIgnoredField = "NonPublicIgnoredField";
+        public const string NoPublicMembers = "NoPublicMembers";
+        public const string DuplicateStructureName = "DuplicateStructureName";
+        public const string ReferenceParameter = "ReferenceParameter";
     }
 
     public static class Categories
@@ -161,6 +164,37 @@ public class Analyzer : DiagnosticAnalyzer
         description: "Properties and fields decorated with OSIgnore must be public.",
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05012");
 
+    private static readonly DiagnosticDescriptor NoPublicMembersRule = new(
+        DiagnosticIds.NoPublicMembers,
+        title: "No public members in OSStructure",
+        messageFormat: "No public properties/fields found in the struct decorated with OSStructure '{0}'",
+        category: Categories.Design,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Structs decorated with OSStructure must have at least one public property or field.",
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05013");
+
+    private static readonly DiagnosticDescriptor DuplicateStructureNameRule = new(
+        DiagnosticIds.DuplicateStructureName,
+        title: "Duplicate OSStructure name",
+        messageFormat: "More than one structure, '{0}', was found with the name '{1}'",
+        category: Categories.Design,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Each structure with the OSStructure attribute must have a unique name.",
+        customTags: WellKnownDiagnosticTags.CompilationEnd,
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05014");
+
+    private static readonly DiagnosticDescriptor ReferenceParameterRule = new(
+        DiagnosticIds.ReferenceParameter,
+        title: "Reference parameter not supported",
+        messageFormat: "The parameter '{0}' in action '{1}' is passed by reference. Passing parameters by reference is not supported.",
+        category: Categories.Design,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Parameters in actions must be passed by value. Return modified values instead of using reference parameters.",
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05016");
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(
             TodoRule,
@@ -175,7 +209,10 @@ public class Analyzer : DiagnosticAnalyzer
             NonPublicImplementationRule,
             NonPublicStructRule,
             NonPublicStructureFieldRule,
-            NonPublicIgnoredFieldRule);
+            NonPublicIgnoredFieldRule,
+            NoPublicMembersRule,
+            DuplicateStructureNameRule,
+            ReferenceParameterRule);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -185,6 +222,8 @@ public class Analyzer : DiagnosticAnalyzer
         context.RegisterCompilationStartAction(compilationContext =>
         {
             var osInterfaces = new ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)>();
+            var structureNames = new ConcurrentBag<(string Name, StructDeclarationSyntax Syntax, string StructName)>();
+
 
             // Register for struct analysis
             compilationContext.RegisterSymbolAction(context =>
@@ -201,11 +240,41 @@ public class Analyzer : DiagnosticAnalyzer
                         var structDeclaration = typeSymbol.DeclaringSyntaxReferences
                             .FirstOrDefault()?.GetSyntax() as StructDeclarationSyntax;
 
-                        if (structDeclaration != null && !typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
+                        if (structDeclaration == null) return;
+
+                        // Get OSStructure attribute and check Name parameter
+                        var osStructureAttribute = typeSymbol.GetAttributes()
+                            .First(attr => attr.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure");
+
+                        var nameArg = osStructureAttribute.NamedArguments
+                            .FirstOrDefault(na => na.Key == "Name");
+
+                        if (nameArg.Key != null && nameArg.Value.Value is string structureName)
+                        {
+                            structureNames.Add((structureName, structDeclaration, typeSymbol.Name));
+                        }
+
+                        // Check if struct is public
+                        if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
                         {
                             context.ReportDiagnostic(
                                 Diagnostic.Create(
                                     NonPublicStructRule,
+                                    structDeclaration.Identifier.GetLocation(),
+                                    typeSymbol.Name));
+                        }
+
+                        // Check for public members
+                        var hasPublicMembers = typeSymbol.GetMembers()
+                            .Any(member =>
+                                (member is IFieldSymbol || member is IPropertySymbol) &&
+                                member.DeclaredAccessibility == Accessibility.Public);
+
+                        if (!hasPublicMembers)
+                        {
+                            context.ReportDiagnostic(
+                                Diagnostic.Create(
+                                    NoPublicMembersRule,
                                     structDeclaration.Identifier.GetLocation(),
                                     typeSymbol.Name));
                         }
@@ -354,6 +423,35 @@ public class Analyzer : DiagnosticAnalyzer
                                 "Method",
                                 methodSymbol.Name));
                         }
+
+                        // Check for reference parameters in OSInterface methods
+                        var interfaceType = methodSymbol.ContainingType;
+                        var hasOSInterfaceAttribute = interfaceType.GetAttributes()
+                            .Any(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
+
+                        if (hasOSInterfaceAttribute)
+                        {
+                            foreach (var parameter in methodSymbol.Parameters)
+                            {
+                                if (parameter.RefKind == RefKind.Ref ||
+                                    parameter.RefKind == RefKind.Out ||
+                                    parameter.RefKind == RefKind.In)
+                                {
+                                    var parameterSyntax = parameter.DeclaringSyntaxReferences
+                                        .FirstOrDefault()?.GetSyntax() as ParameterSyntax;
+
+                                    if (parameterSyntax != null)
+                                    {
+                                        context.ReportDiagnostic(
+                                            Diagnostic.Create(
+                                                ReferenceParameterRule,
+                                                parameterSyntax.GetLocation(),
+                                                parameter.Name,
+                                                methodSymbol.Name));
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }, SymbolKind.Method);
@@ -477,6 +575,26 @@ public class Analyzer : DiagnosticAnalyzer
                                 osInterface.Symbol.Name,
                                 implementationNames));
                     }
+                }
+                var duplicateNames = structureNames
+                    .GroupBy(x => x.Name)
+                    .Where(g => g.Count() > 1)
+                    .ToList();
+
+                foreach (var duplicate in duplicateNames)
+                {
+                    var firstStruct = duplicate
+                        .OrderBy(d => d.StructName)  // Order by name first
+                        .First();  // Now we'll always get Structure1
+                    var structNames = string.Join(", ",
+                        duplicate.Select(d => d.StructName).OrderBy(n => n));
+
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            DuplicateStructureNameRule,
+                            firstStruct.Syntax.Identifier.GetLocation(),
+                            structNames,
+                            duplicate.Key));
                 }
             });
         });
