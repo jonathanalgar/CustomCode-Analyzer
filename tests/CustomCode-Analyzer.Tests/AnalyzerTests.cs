@@ -39,7 +39,6 @@ namespace CustomCode_Analyzer.Tests
         public override string ToString() => _output.ToString();
     }
 
-
     public static class CSharpAnalyzerVerifier<TAnalyzer>
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
@@ -56,25 +55,38 @@ namespace CustomCode_Analyzer.Tests
             logger.WriteLine(source);
 
             // Add all required attribute definitions
-            // Add all required attribute definitions
             test.TestState.Sources.Add(@"
         using System;
         
         [AttributeUsage(AttributeTargets.Interface)]
-        public class OSInterfaceAttribute : Attribute { }
+        public class OSInterfaceAttribute : Attribute 
+        { 
+            public string Name { get; set; }
+            public string Description { get; set; }
+            public string IconResourceName { get; set; }
+            public string OriginalName { get; set; }
+        }
         
         [AttributeUsage(AttributeTargets.Struct)]
         public class OSStructureAttribute : Attribute 
         { 
             public string Name { get; set; }
+            public string Description { get; set; }
+            public string OriginalName { get; set; }
         }
         
         [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-        public class OSStructureFieldAttribute : Attribute { }
+        public class OSStructureFieldAttribute : Attribute 
+        {
+            public string Description { get; set; }
+            public int Length { get; set; } = 50;
+            public string OriginalName { get; set; }
+        }
         
         [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
         public class OSIgnoreAttribute : Attribute { }
     ");
+
 
 
             test.ExpectedDiagnostics.AddRange(expected);
@@ -148,25 +160,6 @@ namespace CustomCode_Analyzer.Tests
     {
         public TestContext? TestContext { get; set; }
 
-        [TestMethod]
-        public async Task TodoComment_ReportsWarning()
-        {
-            Assert.IsNotNull(TestContext, "TestContext should not be null");
-
-            var test = @"
-public class TestClass 
-{
-    // TODO: Implement this method
-    public void TestMethod() 
-    {
-    }
-}";
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.TodoComment)
-                .WithSpan(4, 5, 4, 35)
-                .WithArguments("TestMethod");
-
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
-        }
 
         [TestMethod]
         public async Task NonPublicOSInterface_ReportsWarning()
@@ -546,6 +539,106 @@ public class TestImplementation : ITestInterface
 }";
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext);
+        }
+
+        [TestMethod]
+        public async Task NameTooLong_ExternalLibraryName_ReportsWarning()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSInterface(Name = ""ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed"")]
+public interface ITestInterface 
+{
+    void Method();
+}
+
+public class TestImplementation : ITestInterface 
+{
+    public void Method() { }
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.NameTooLong)
+                .WithSpan(2, 1, 6, 2)
+                .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+        [TestMethod]
+        public async Task NameTooLong_DefaultInterfaceNameWithoutI_ReportsWarning()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSInterface]
+public interface IThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed 
+{
+    void Method();
+}
+
+public class TestImplementation : IThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed 
+{
+    public void Method() { }
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.NameTooLong)
+                .WithSpan(2, 1, 6, 2)
+                .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+        [TestMethod]
+        public async Task NameStartsWithNumber_Interface_ReportsWarning()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSInterface(Name = ""123Service"")]
+public interface ITestInterface 
+{
+    void Method();
+}
+
+public class TestImplementation : ITestInterface 
+{
+    public void Method() { }
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.NameStartsWithNumber)
+                .WithSpan(2, 1, 6, 2)
+                .WithArguments("123Service");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+        [TestMethod]
+        public async Task InvalidCharactersInName_Interface_ReportsWarning()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSInterface(Name = ""Invalid*Name@123"")]
+public interface ITestInterface 
+{
+    void Method();
+}
+
+public class TestImplementation : ITestInterface 
+{
+    public void Method() { }
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.InvalidCharactersInName)
+                .WithSpan(2, 1, 6, 2)
+                .WithArguments("Invalid*Name@123", "*, @");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }
 
         [TestMethod]

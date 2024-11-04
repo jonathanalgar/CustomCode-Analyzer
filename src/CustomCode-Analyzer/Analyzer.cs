@@ -10,7 +10,6 @@ public class Analyzer : DiagnosticAnalyzer
 {
     public static class DiagnosticIds
     {
-        public const string TodoComment = "TODOCommentDetected";
         public const string NonPublicInterface = "NonPublicInterface";
         public const string NoSingleInterface = "NoSingleInterface";
         public const string ManyInterfaces = "ManyInterfaces";
@@ -26,23 +25,16 @@ public class Analyzer : DiagnosticAnalyzer
         public const string NoPublicMembers = "NoPublicMembers";
         public const string DuplicateStructureName = "DuplicateStructureName";
         public const string ReferenceParameter = "ReferenceParameter";
+        public const string NameTooLong = "NameTooLong";
+        public const string NameStartsWithNumber = "NameStartsWithNumber";
+        public const string InvalidCharactersInName = "InvalidCharactersInName";
     }
 
     public static class Categories
     {
-        public const string Documentation = "Documentation";
         public const string Design = "Design";
         public const string Naming = "Naming";
     }
-
-    private static readonly DiagnosticDescriptor TodoRule = new(
-        DiagnosticIds.TodoComment,
-        title: "TODO comment detected",
-        messageFormat: "TODO comment detected in method '{0}' - create a work item instead",
-        category: Categories.Documentation,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "TODO comments should be tracked in work items.");
 
     private static readonly DiagnosticDescriptor NoSingleInterfaceRule = new(
         DiagnosticIds.NoSingleInterface,
@@ -195,9 +187,38 @@ public class Analyzer : DiagnosticAnalyzer
         description: "Parameters in actions must be passed by value. Return modified values instead of using reference parameters.",
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05016");
 
+    private static readonly DiagnosticDescriptor NameTooLongRule = new( 
+        DiagnosticIds.NameTooLong,
+        title: "Name exceeds maximum length",
+        messageFormat: "The name '{0}' is not supported as it has more than 50 characters",
+        category: Categories.Naming,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Names must not exceed 50 characters in length.",
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05019");
+
+    private static readonly DiagnosticDescriptor NameStartsWithNumberRule = new(
+        DiagnosticIds.NameStartsWithNumber,
+        title: "Name starts with number",
+        messageFormat: "The name '{0}' is not supported as it begins with a number",
+        category: Categories.Naming,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Names must not begin with a number. Use a letter as the first character.",
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05020");
+
+    private static readonly DiagnosticDescriptor InvalidCharactersInNameRule = new(
+        DiagnosticIds.InvalidCharactersInName,
+        title: "Invalid characters in name",
+        messageFormat: "The name '{0}' is not supported as it has the following invalid characters '{1}'",
+        category: Categories.Naming,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Names must only contain letters, numbers, and underscores.",
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05021");
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(
-            TodoRule,
             InterfaceRule,
             NoSingleInterfaceRule,
             ManyInterfacesRule,
@@ -212,7 +233,10 @@ public class Analyzer : DiagnosticAnalyzer
             NonPublicIgnoredFieldRule,
             NoPublicMembersRule,
             DuplicateStructureNameRule,
-            ReferenceParameterRule);
+            ReferenceParameterRule,
+            NameTooLongRule,
+            NameStartsWithNumberRule,
+            InvalidCharactersInNameRule);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -223,7 +247,6 @@ public class Analyzer : DiagnosticAnalyzer
         {
             var osInterfaces = new ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)>();
             var structureNames = new ConcurrentBag<(string Name, StructDeclarationSyntax Syntax, string StructName)>();
-
 
             // Register for struct analysis
             compilationContext.RegisterSymbolAction(context =>
@@ -342,17 +365,16 @@ public class Analyzer : DiagnosticAnalyzer
                 }
             }, SymbolKind.NamedType);
 
-
             // Register for interface analysis
             compilationContext.RegisterSymbolAction(context =>
             {
                 if (context.Symbol is INamedTypeSymbol typeSymbol &&
                     typeSymbol.TypeKind == TypeKind.Interface)
                 {
-                    var hasOSInterfaceAttribute = typeSymbol.GetAttributes()
-                        .Any(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
+                    var osInterfaceAttribute = typeSymbol.GetAttributes()
+                        .FirstOrDefault(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
 
-                    if (hasOSInterfaceAttribute)
+                    if (osInterfaceAttribute != null)
                     {
                         var syntaxRef = typeSymbol.DeclaringSyntaxReferences.FirstOrDefault();
                         if (syntaxRef != null &&
@@ -360,29 +382,83 @@ public class Analyzer : DiagnosticAnalyzer
                         {
                             osInterfaces.TryAdd(typeSymbol.Name, (syntax, typeSymbol));
 
+                            // Check for empty interface first - this needs to be before other checks
+                            if (!typeSymbol.GetMembers().OfType<IMethodSymbol>().Any())
+                            {
+                                context.ReportDiagnostic(
+                                    Diagnostic.Create(
+                                        EmptyInterfaceRule,
+                                        syntax.Identifier.GetLocation(),
+                                        typeSymbol.Name));
+                            }
+
+                            string? libraryName = null;
+
+                            // Check Name property
+                            var nameArg = osInterfaceAttribute.NamedArguments
+                                .FirstOrDefault(na => na.Key == "Name");
+                            if (nameArg.Key != null && nameArg.Value.Value is string specifiedName)
+                            {
+                                libraryName = specifiedName;
+                            }
+                            else
+                            {
+                                // Check OriginalName property
+                                var originalNameArg = osInterfaceAttribute.NamedArguments
+                                    .FirstOrDefault(na => na.Key == "OriginalName");
+                                if (originalNameArg.Key != null && originalNameArg.Value.Value is string originalName)
+                                {
+                                    libraryName = originalName;
+                                }
+                            }
+
+                            // If no name was specified in the attribute, use the interface name without 'I' prefix
+                            if (libraryName == null)
+                            {
+                                libraryName = typeSymbol.Name.StartsWith("I", StringComparison.Ordinal) ?
+                                    typeSymbol.Name[1..] : typeSymbol.Name;
+                            }
+
+                            // Now we know libraryName is not null
+                            if (libraryName.Length > 50)
+                            {
+                                context.ReportDiagnostic(
+                                    Diagnostic.Create(
+                                        NameTooLongRule,
+                                        syntax.GetLocation(),
+                                        libraryName));
+                            }
+
+                            if (char.IsDigit(libraryName[0]))  // Check for number prefix right after length check
+                            {
+                                context.ReportDiagnostic(
+                                    Diagnostic.Create(
+                                        NameStartsWithNumberRule,
+                                        syntax.GetLocation(),
+                                        libraryName));
+                            }
+
+                            var invalidChars = libraryName.Where(c => !char.IsLetterOrDigit(c) && c != '_')
+                             .Distinct()
+                             .ToArray();
+                            if (invalidChars.Length > 0)
+                            {
+                                context.ReportDiagnostic(
+                                    Diagnostic.Create(
+                                        InvalidCharactersInNameRule,
+                                        syntax.GetLocation(),
+                                        libraryName,
+                                        string.Join(", ", invalidChars)));
+                            }
+
                             // Check if interface is public
                             if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
                             {
                                 context.ReportDiagnostic(
-                                    Diagnostic.Create(InterfaceRule, syntax.GetLocation(), typeSymbol.Name));
-                            }
-
-                            // Check for underscore prefix
-                            if (typeSymbol.Name.StartsWith("_"))
-                            {
-                                context.ReportDiagnostic(
-                                    Diagnostic.Create(NoUnderscoreRule,
-                                    syntax.GetLocation(),
-                                    "Interface",
-                                    typeSymbol.Name));
-                            }
-                            // Check for empty interface
-                            if (!typeSymbol.GetMembers().OfType<IMethodSymbol>().Any())
-                            {
-                                context.ReportDiagnostic(
-                                    Diagnostic.Create(EmptyInterfaceRule,
-                                    syntax.Identifier.GetLocation(),
-                                    typeSymbol.Name));
+                                    Diagnostic.Create(
+                                        InterfaceRule,
+                                        syntax.GetLocation(),
+                                        typeSymbol.Name));
                             }
                         }
                     }
@@ -398,37 +474,35 @@ public class Analyzer : DiagnosticAnalyzer
                     if (syntaxRef != null &&
                         syntaxRef.GetSyntax() is MethodDeclarationSyntax methodSyntax)
                     {
-                        // Check for TODO comments
-                        var leadingTrivia = methodSyntax.GetLeadingTrivia();
-                        foreach (var trivia in leadingTrivia)
+                        // Check if this method is in an OSInterface or implements an OSInterface method
+                        var containingType = methodSymbol.ContainingType;
+                        var hasOSInterfaceAttribute = containingType.GetAttributes()
+                            .Any(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
+
+                        var implementsOSInterface = false;
+                        if (!hasOSInterfaceAttribute)
                         {
-                            if (trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) &&
-                                trivia.ToString().Contains("TODO", StringComparison.OrdinalIgnoreCase))
+                            // Check if this is implementing a method from an OSInterface
+                            implementsOSInterface = containingType.Interfaces
+                                .Any(i => i.GetAttributes()
+                                    .Any(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface"));
+                        }
+
+                        if (hasOSInterfaceAttribute || implementsOSInterface)
+                        {
+                            // Check for underscore prefix
+                            if (methodSymbol.Name.StartsWith("_"))
                             {
                                 context.ReportDiagnostic(
                                     Diagnostic.Create(
-                                        TodoRule,
-                                        Location.Create(methodSyntax.SyntaxTree, trivia.Span),
+                                        NoUnderscoreRule,
+                                        methodSyntax.GetLocation(),
+                                        "Method",
                                         methodSymbol.Name));
-                                break;
                             }
                         }
 
-                        // Check for underscore prefix
-                        if (methodSymbol.Name.StartsWith("_"))
-                        {
-                            context.ReportDiagnostic(
-                                Diagnostic.Create(NoUnderscoreRule,
-                                methodSyntax.GetLocation(),
-                                "Method",
-                                methodSymbol.Name));
-                        }
-
-                        // Check for reference parameters in OSInterface methods
-                        var interfaceType = methodSymbol.ContainingType;
-                        var hasOSInterfaceAttribute = interfaceType.GetAttributes()
-                            .Any(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
-
+                        // Reference parameter check only for OSInterface methods (not implementations)
                         if (hasOSInterfaceAttribute)
                         {
                             foreach (var parameter in methodSymbol.Parameters)
@@ -439,7 +513,6 @@ public class Analyzer : DiagnosticAnalyzer
                                 {
                                     var parameterSyntax = parameter.DeclaringSyntaxReferences
                                         .FirstOrDefault()?.GetSyntax() as ParameterSyntax;
-
                                     if (parameterSyntax != null)
                                     {
                                         context.ReportDiagnostic(
@@ -455,6 +528,7 @@ public class Analyzer : DiagnosticAnalyzer
                     }
                 }
             }, SymbolKind.Method);
+
 
             // Register for class analysis
             compilationContext.RegisterSymbolAction(context =>

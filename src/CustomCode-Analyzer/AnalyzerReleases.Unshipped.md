@@ -2,7 +2,6 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
-TODOCommentDetected | Documentation | Warning | Comments analyzer
 NonPublicInterface | Design | Warning | Interface visibility analyzer
 NoSingleInterface | Design | Warning | Interface requirement analyzer
 ManyInterfaces | Design | Warning | Interface count analyzer
@@ -18,3 +17,6 @@ NonPublicIgnoredField | Design | Warning | Properties and fields decorated with 
 NoPublicMembers | Design | Warning | Checks that OSInterface has public members
 DuplicateStructureName | Design | Warning | Checks that OSStructure has unique names
 ReferenceParameter | Design | Warning | Checks that OSInterface has reference parameters
+NameTooLong | Naming | Warning | Checks that names are not too long
+NameStartsWithNumber | Naming | Warning | Checks that names don't start with number
+InvalidCharactersInName | Naming | Warning | Checks that names don't contain invalid characters
