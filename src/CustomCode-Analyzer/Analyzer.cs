@@ -8,6 +8,10 @@ using System.Collections.Concurrent;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class Analyzer : DiagnosticAnalyzer
 {
+    /// <summary>
+    /// Contains all diagnostic IDs used by this analyzer.
+    /// These IDs are used to uniquely identify each type of diagnostic that can be reported.
+    /// </summary>
     public static class DiagnosticIds
     {
         public const string NonPublicInterface = "NonPublicInterface";
@@ -29,12 +33,23 @@ public class Analyzer : DiagnosticAnalyzer
         public const string NameStartsWithNumber = "NameStartsWithNumber";
         public const string InvalidCharactersInName = "InvalidCharactersInName";
     }
-
+    /// <summary>
+    /// Defines the categories used to group diagnostics.
+    /// These categories help organize diagnostics in IDE warning lists.
+    /// </summary>
     public static class Categories
     {
-        public const string Design = "Design";
-        public const string Naming = "Naming";
+        public const string Design = "Design";   // Issues related to code structure and design
+        public const string Naming = "Naming";   // Issues related to naming conventions
     }
+
+    // Define diagnostic descriptors for each rule
+    // Each descriptor includes:
+    // - A unique ID
+    // - A title and message format
+    // - The category and severity
+    // - Whether it's enabled by default
+    // - Optional help link and custom tags
 
     private static readonly DiagnosticDescriptor NoSingleInterfaceRule = new(
         DiagnosticIds.NoSingleInterface,
@@ -238,46 +253,56 @@ public class Analyzer : DiagnosticAnalyzer
             NameStartsWithNumberRule,
             InvalidCharactersInNameRule);
 
+    /// <summary>
+    /// Initializes the analyzer by registering all necessary analysis actions.
+    /// This method is called once at the start of the analysis.
+    /// </summary>
+    /// <param name="context">The context for initialization</param>
     public override void Initialize(AnalysisContext context)
     {
+        // Disable analysis for generated code to improve performance
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+        // Enable concurrent analysis for better performance
         context.EnableConcurrentExecution();
 
         context.RegisterCompilationStartAction(compilationContext =>
         {
+            // Create thread-safe collections to track interfaces and structures across the compilation
             var osInterfaces = new ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)>();
             var structureNames = new ConcurrentBag<(string Name, StructDeclarationSyntax Syntax, string StructName)>();
 
-            // Register for struct analysis
+            // Register handler for struct analysis
             compilationContext.RegisterSymbolAction(context =>
             {
                 if (context.Symbol is INamedTypeSymbol typeSymbol &&
                     typeSymbol.TypeKind == TypeKind.Struct)
                 {
+                    // Check if struct has OSStructure attribute
                     var hasOSStructureAttribute = typeSymbol.GetAttributes()
                         .Any(attr => attr.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure");
 
                     if (hasOSStructureAttribute)
                     {
-                        // Check struct accessibility
+                        // Get the syntax node for the struct declaration
                         var structDeclaration = typeSymbol.DeclaringSyntaxReferences
                             .FirstOrDefault()?.GetSyntax() as StructDeclarationSyntax;
 
                         if (structDeclaration == null) return;
 
-                        // Get OSStructure attribute and check Name parameter
+                        // Extract the Name parameter from the OSStructure attribute if present
                         var osStructureAttribute = typeSymbol.GetAttributes()
                             .First(attr => attr.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure");
 
                         var nameArg = osStructureAttribute.NamedArguments
                             .FirstOrDefault(na => na.Key == "Name");
 
+                        // Add structure name to tracking collection if specified
                         if (nameArg.Key != null && nameArg.Value.Value is string structureName)
                         {
                             structureNames.Add((structureName, structDeclaration, typeSymbol.Name));
                         }
 
-                        // Check if struct is public
+                        // Verify struct is declared as public
                         if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
                         {
                             context.ReportDiagnostic(
@@ -287,7 +312,7 @@ public class Analyzer : DiagnosticAnalyzer
                                     typeSymbol.Name));
                         }
 
-                        // Check for public members
+                        // Check that struct has at least one public member
                         var hasPublicMembers = typeSymbol.GetMembers()
                             .Any(member =>
                                 (member is IFieldSymbol || member is IPropertySymbol) &&
@@ -302,9 +327,10 @@ public class Analyzer : DiagnosticAnalyzer
                                     typeSymbol.Name));
                         }
 
-                        // Check fields and properties
+                        // Analyze each member of the struct
                         foreach (var member in typeSymbol.GetMembers())
                         {
+                            // Helper function to get the source location for error reporting
                             Location GetMemberLocation()
                             {
                                 var syntax = member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
@@ -325,7 +351,7 @@ public class Analyzer : DiagnosticAnalyzer
                                 return Location.None;
                             }
 
-                            // Check for OSStructureField
+                            // Check OSStructureField attribute requirements
                             var hasOSStructureFieldAttribute = member.GetAttributes()
                                 .Any(attr => attr.AttributeClass?.Name is "OSStructureFieldAttribute" or "OSStructureField");
 
@@ -343,7 +369,7 @@ public class Analyzer : DiagnosticAnalyzer
                                 }
                             }
 
-                            // Check for OSIgnore
+                            // Check OSIgnore attribute requirements
                             var hasOSIgnoreAttribute = member.GetAttributes()
                                 .Any(attr => attr.AttributeClass?.Name is "OSIgnoreAttribute" or "OSIgnore");
 
@@ -365,24 +391,27 @@ public class Analyzer : DiagnosticAnalyzer
                 }
             }, SymbolKind.NamedType);
 
-            // Register for interface analysis
+            // Register handler for interface analysis
             compilationContext.RegisterSymbolAction(context =>
             {
                 if (context.Symbol is INamedTypeSymbol typeSymbol &&
                     typeSymbol.TypeKind == TypeKind.Interface)
                 {
+                    // Check if interface has OSInterface attribute
                     var osInterfaceAttribute = typeSymbol.GetAttributes()
                         .FirstOrDefault(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
 
                     if (osInterfaceAttribute != null)
                     {
+                        // Get the syntax node for the interface declaration
                         var syntaxRef = typeSymbol.DeclaringSyntaxReferences.FirstOrDefault();
                         if (syntaxRef != null &&
                             syntaxRef.GetSyntax() is InterfaceDeclarationSyntax syntax)
                         {
+                            // Add interface to tracking dictionary for later analysis
                             osInterfaces.TryAdd(typeSymbol.Name, (syntax, typeSymbol));
 
-                            // Check for empty interface first - this needs to be before other checks
+                            // Check if interface has any methods - must not be empty
                             if (!typeSymbol.GetMembers().OfType<IMethodSymbol>().Any())
                             {
                                 context.ReportDiagnostic(
@@ -392,9 +421,10 @@ public class Analyzer : DiagnosticAnalyzer
                                         typeSymbol.Name));
                             }
 
+                            // Extract library name from attribute or interface name
                             string? libraryName = null;
 
-                            // Check Name property
+                            // First check Name property in attribute
                             var nameArg = osInterfaceAttribute.NamedArguments
                                 .FirstOrDefault(na => na.Key == "Name");
                             if (nameArg.Key != null && nameArg.Value.Value is string specifiedName)
@@ -403,7 +433,7 @@ public class Analyzer : DiagnosticAnalyzer
                             }
                             else
                             {
-                                // Check OriginalName property
+                                // If Name not found, check OriginalName property
                                 var originalNameArg = osInterfaceAttribute.NamedArguments
                                     .FirstOrDefault(na => na.Key == "OriginalName");
                                 if (originalNameArg.Key != null && originalNameArg.Value.Value is string originalName)
@@ -412,14 +442,15 @@ public class Analyzer : DiagnosticAnalyzer
                                 }
                             }
 
-                            // If no name was specified in the attribute, use the interface name without 'I' prefix
+                            // If no name specified in attributes, use interface name without 'I' prefix
                             if (libraryName == null)
                             {
                                 libraryName = typeSymbol.Name.StartsWith("I", StringComparison.Ordinal) ?
                                     typeSymbol.Name[1..] : typeSymbol.Name;
                             }
 
-                            // Now we know libraryName is not null
+                            // Validate library name constraints
+                            // Check maximum length (50 characters)
                             if (libraryName.Length > 50)
                             {
                                 context.ReportDiagnostic(
@@ -429,7 +460,8 @@ public class Analyzer : DiagnosticAnalyzer
                                         libraryName));
                             }
 
-                            if (char.IsDigit(libraryName[0]))  // Check for number prefix right after length check
+                            // Check if name starts with a number
+                            if (char.IsDigit(libraryName[0]))
                             {
                                 context.ReportDiagnostic(
                                     Diagnostic.Create(
@@ -438,6 +470,7 @@ public class Analyzer : DiagnosticAnalyzer
                                         libraryName));
                             }
 
+                            // Check for invalid characters (only letters, numbers, and underscore allowed)
                             var invalidChars = libraryName.Where(c => !char.IsLetterOrDigit(c) && c != '_')
                              .Distinct()
                              .ToArray();
@@ -451,7 +484,7 @@ public class Analyzer : DiagnosticAnalyzer
                                         string.Join(", ", invalidChars)));
                             }
 
-                            // Check if interface is public
+                            // Verify interface is declared as public
                             if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
                             {
                                 context.ReportDiagnostic(
@@ -465,24 +498,27 @@ public class Analyzer : DiagnosticAnalyzer
                 }
             }, SymbolKind.NamedType);
 
-            // Register for method analysis
+            // Register handler for method analysis
             compilationContext.RegisterSymbolAction(context =>
             {
                 if (context.Symbol is IMethodSymbol methodSymbol)
                 {
+                    // Get method declaration syntax
                     var syntaxRef = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault();
                     if (syntaxRef != null &&
                         syntaxRef.GetSyntax() is MethodDeclarationSyntax methodSyntax)
                     {
-                        // Check if this method is in an OSInterface or implements an OSInterface method
+                        // Get containing type to check if it's an OSInterface or implements one
                         var containingType = methodSymbol.ContainingType;
+
+                        // Check if method is directly in an OSInterface
                         var hasOSInterfaceAttribute = containingType.GetAttributes()
                             .Any(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
 
                         var implementsOSInterface = false;
                         if (!hasOSInterfaceAttribute)
                         {
-                            // Check if this is implementing a method from an OSInterface
+                            // Check if method is in a class that implements an OSInterface
                             implementsOSInterface = containingType.Interfaces
                                 .Any(i => i.GetAttributes()
                                     .Any(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface"));
@@ -490,7 +526,7 @@ public class Analyzer : DiagnosticAnalyzer
 
                         if (hasOSInterfaceAttribute || implementsOSInterface)
                         {
-                            // Check for underscore prefix
+                            // Check for underscore prefix in method names
                             if (methodSymbol.Name.StartsWith("_"))
                             {
                                 context.ReportDiagnostic(
@@ -505,12 +541,14 @@ public class Analyzer : DiagnosticAnalyzer
                         // Reference parameter check only for OSInterface methods (not implementations)
                         if (hasOSInterfaceAttribute)
                         {
+                            // Check each parameter for ref/out/in modifiers
                             foreach (var parameter in methodSymbol.Parameters)
                             {
                                 if (parameter.RefKind == RefKind.Ref ||
                                     parameter.RefKind == RefKind.Out ||
                                     parameter.RefKind == RefKind.In)
                                 {
+                                    // Get parameter syntax for accurate error location
                                     var parameterSyntax = parameter.DeclaringSyntaxReferences
                                         .FirstOrDefault()?.GetSyntax() as ParameterSyntax;
                                     if (parameterSyntax != null)
@@ -529,22 +567,22 @@ public class Analyzer : DiagnosticAnalyzer
                 }
             }, SymbolKind.Method);
 
-
-            // Register for class analysis
+            // Register handler for class analysis
             compilationContext.RegisterSymbolAction(context =>
             {
                 if (context.Symbol is INamedTypeSymbol typeSymbol &&
                     typeSymbol.TypeKind == TypeKind.Class)
                 {
-                    // Check if this class implements any OSInterface-decorated interfaces
+                    // Check each interface implemented by this class
                     foreach (var implementedInterface in typeSymbol.Interfaces)
                     {
+                        // Check if the interface has OSInterface attribute
                         var hasOSInterfaceAttribute = implementedInterface.GetAttributes()
                             .Any(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
 
                         if (hasOSInterfaceAttribute)
                         {
-                            // Check if the class is public
+                            // Verify implementing class is public
                             if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
                             {
                                 var classDeclaration = typeSymbol.DeclaringSyntaxReferences
@@ -560,7 +598,7 @@ public class Analyzer : DiagnosticAnalyzer
                                 }
                             }
 
-                            // Check if the class has a public parameterless constructor
+                            // Check for public parameterless constructor
                             var hasPublicParameterlessConstructor = typeSymbol.Constructors.Any(c =>
                                 c.DeclaredAccessibility == Accessibility.Public &&
                                 c.Parameters.Length == 0);
@@ -585,17 +623,18 @@ public class Analyzer : DiagnosticAnalyzer
             }, SymbolKind.NamedType);
 
 
-            // Register compilation end analysis
+            // Register end-of-compilation analysis to perform final validations
             compilationContext.RegisterCompilationEndAction(context =>
             {
                 if (osInterfaces.Count == 0)
                 {
-                    // Only report NoSingleInterface if we find at least one interface
+                    // If no OSInterface found, only report if there are any interfaces at all
                     var interfaces = context.Compilation.GlobalNamespace.GetTypeMembers()
                         .Where(t => t.TypeKind == TypeKind.Interface);
 
                     if (interfaces.Any())
                     {
+                        // Report missing OSInterface only if at least one interface exists
                         var firstInterface = interfaces.First().DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
                         if (firstInterface != null)
                         {
@@ -607,10 +646,12 @@ public class Analyzer : DiagnosticAnalyzer
                 else if (osInterfaces.Count > 1)
                 {
                     // Multiple OSInterfaces found
+                    // Get the first interface by source location for error reporting
                     var firstInterface = osInterfaces.Values
                         .OrderBy(i => i.Syntax.GetLocation().GetLineSpan().StartLinePosition)
                         .First();
 
+                    // Create comma-separated list of interface names
                     var interfaceNames = string.Join(", ",
                         osInterfaces.Keys.OrderBy(name => name));
 
@@ -619,9 +660,10 @@ public class Analyzer : DiagnosticAnalyzer
                 }
                 else
                 {
-                    // Check implementation for single OSInterface
+                    // Exactly one OSInterface found - validate its implementation
                     var osInterface = osInterfaces.Values.First();
 
+                    // Find all classes that implement this interface
                     var implementations = context.Compilation.GlobalNamespace
                         .GetTypeMembers()
                         .Where(t => t.TypeKind == TypeKind.Class &&
@@ -630,6 +672,7 @@ public class Analyzer : DiagnosticAnalyzer
 
                     if (!implementations.Any())
                     {
+                        // No implementing class found
                         context.ReportDiagnostic(
                             Diagnostic.Create(
                                 NoImplementingClassRule,
@@ -638,7 +681,7 @@ public class Analyzer : DiagnosticAnalyzer
                     }
                     else if (implementations.Count > 1)
                     {
-                        // Report multiple implementations diagnostic
+                        // Multiple implementations found - create list of class names
                         var implementationNames = string.Join(", ",
                             implementations.Select(i => i.Name).OrderBy(name => name));
 
@@ -650,6 +693,8 @@ public class Analyzer : DiagnosticAnalyzer
                                 implementationNames));
                     }
                 }
+
+                // Check for duplicate structure names
                 var duplicateNames = structureNames
                     .GroupBy(x => x.Name)
                     .Where(g => g.Count() > 1)
@@ -657,9 +702,12 @@ public class Analyzer : DiagnosticAnalyzer
 
                 foreach (var duplicate in duplicateNames)
                 {
+                    // Get the first struct (ordered by name) for consistent error reporting
                     var firstStruct = duplicate
-                        .OrderBy(d => d.StructName)  // Order by name first
-                        .First();  // Now we'll always get Structure1
+                        .OrderBy(d => d.StructName)
+                        .First();
+
+                    // Create comma-separated list of struct names that share the same name
                     var structNames = string.Join(", ",
                         duplicate.Select(d => d.StructName).OrderBy(n => n));
 

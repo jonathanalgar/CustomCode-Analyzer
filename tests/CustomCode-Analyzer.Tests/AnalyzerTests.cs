@@ -3,16 +3,19 @@ using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.CodeAnalysis.Testing.Verifiers;
 using System.Threading.Tasks;
 using static Analyzer;
-using Microsoft.CodeAnalysis.Testing.Verifiers;
 using System.Collections.Immutable;
 using System.Text;
 using Xunit.Abstractions;
 
 namespace CustomCode_Analyzer.Tests
 {
-
+    /// <summary>
+    /// Provides detailed logging capabilities for analyzer tests.
+    /// Implements ITestOutputHelper to capture and display test execution details.
+    /// </summary>
     public class DetailedTestLogger : ITestOutputHelper
     {
         private readonly TestContext _testContext;
@@ -39,12 +42,15 @@ namespace CustomCode_Analyzer.Tests
         public override string ToString() => _output.ToString();
     }
 
+    // Generic verifier class for analyzer tests
     public static class CSharpAnalyzerVerifier<TAnalyzer>
         where TAnalyzer : DiagnosticAnalyzer, new()
     {
+        // Create a diagnostic result for the specified rule
         public static DiagnosticResult Diagnostic(string diagnosticId)
-            => CSharpAnalyzerVerifier<TAnalyzer, MSTestVerifier>.Diagnostic(diagnosticId);
+            => CSharpAnalyzerVerifier<TAnalyzer, DefaultVerifier>.Diagnostic(diagnosticId);
 
+        // Main method to verify analyzer behavior against source code
         public static async Task VerifyAnalyzerAsync(string source, TestContext testContext, params DiagnosticResult[] expected)
         {
             var logger = new DetailedTestLogger(testContext);
@@ -54,7 +60,7 @@ namespace CustomCode_Analyzer.Tests
             logger.WriteLine("\nAnalyzing source code:");
             logger.WriteLine(source);
 
-            // Add all required attribute definitions
+            // Add required attribute definitions that would normally be in referenced assemblies
             test.TestState.Sources.Add(@"
         using System;
         
@@ -86,26 +92,28 @@ namespace CustomCode_Analyzer.Tests
         [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
         public class OSIgnoreAttribute : Attribute { }
     ");
-
-
-
+            // Add expected diagnostics to test
             test.ExpectedDiagnostics.AddRange(expected);
 
+            // Log expected diagnostics for debugging
             logger.WriteLine("\nExpected diagnostics:");
             foreach (var diagnostic in expected)
             {
                 logger.WriteLine($"- {diagnostic.Id}: {diagnostic.MessageFormat} at {diagnostic.Spans[0]}");
             }
 
+            // Run the analyzer test
             await test.RunAsync();
         }
 
-        private class Test : CSharpAnalyzerTest<TAnalyzer, MSTestVerifier>
+        // Internal test class that configures and runs individual analyzer tests
+        private class Test : CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
         {
             private readonly ITestOutputHelper _logger;
 
             public Test(ITestOutputHelper logger)
             {
+                // Configure test to use .NET 8.0 reference assemblies
                 _logger = logger;
                 ReferenceAssemblies = new ReferenceAssemblies(
                     "net8.0",
@@ -114,11 +122,13 @@ namespace CustomCode_Analyzer.Tests
                         "8.0.0"),
                     Path.Combine("ref", "net8.0"));
 
+                // Add solution-wide configuration for nullable warnings
                 SolutionTransforms.Add((solution, projectId) =>
                 {
                     var compilationOptions = solution.GetProject(projectId)?.CompilationOptions;
                     if (compilationOptions != null)
                     {
+                        // Configure specific diagnostic options for nullable warnings
                         compilationOptions = compilationOptions.WithSpecificDiagnosticOptions(
                             compilationOptions.SpecificDiagnosticOptions.SetItems(CSharpVerifierHelper.NullableWarnings));
                         solution = solution.WithProjectCompilationOptions(projectId, compilationOptions);
@@ -127,6 +137,7 @@ namespace CustomCode_Analyzer.Tests
                 });
             }
 
+            // Override to configure specific compilation options for each test
             protected override CompilationOptions CreateCompilationOptions()
             {
                 var compilationOptions = base.CreateCompilationOptions();
@@ -136,15 +147,17 @@ namespace CustomCode_Analyzer.Tests
         }
     }
 
-
+    // Helper class to configure nullable reference type warnings
     public static class CSharpVerifierHelper
     {
+        // Dictionary of nullable warning configurations
         public static ImmutableDictionary<string, ReportDiagnostic> NullableWarnings
         {
             get
             {
                 return ImmutableDictionary.CreateRange(new[]
                 {
+                        // Configure specific nullable warning codes as errors
                         new KeyValuePair<string, ReportDiagnostic>("CS8632", ReportDiagnostic.Error),
                         new KeyValuePair<string, ReportDiagnostic>("CS8669", ReportDiagnostic.Error)
                     });
@@ -152,6 +165,7 @@ namespace CustomCode_Analyzer.Tests
         }
     }
 
+    // Define OSInterface attribute for test use
     [AttributeUsage(AttributeTargets.Interface)]
     public class OSInterfaceAttribute : Attribute { }
 
@@ -177,7 +191,7 @@ public class TestImplementation : ITestInterface
 {
     public void TestMethod() { }
 }";
-
+            // Warning for non-public interface with OSInterface - spans the entire interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NonPublicInterface)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface");
@@ -235,7 +249,8 @@ public struct Structure2
 {
     public float Value;
 }";
-
+            // Warning for duplicate structure name - spans first occurrence of the duplicate name
+            // Reports both struct names (Structure1, Structure2) and the duplicate name they share (MyStructure)
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.DuplicateStructureName)
                 .WithSpan(3, 15, 3, 25)
@@ -271,7 +286,7 @@ public class SecondImplementation : ISecondInterface
 {
     public void TestMethod() { }
 }";
-
+            // Warning for multiple OSInterface attributes - spans the first interface's entire declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("IFirstInterface, ISecondInterface");
@@ -289,6 +304,7 @@ public interface ITestInterface
 {
     void TestMethod();
 }";
+            // Warning for missing OSInterface attribute - spans the interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoSingleInterface)
                 .WithSpan(2, 1, 5, 2);
 
@@ -307,13 +323,13 @@ public interface ITestInterface
 }";
 
             var expected = new[] {
-        // Empty interface warning
+        // Warning for empty interface - spans the interface name
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.EmptyInterface)
-            .WithSpan(3, 18, 3, 32)  // Changed end column from 31 to 32
+            .WithSpan(3, 18, 3, 32)
             .WithArguments("ITestInterface"),
             
-        // No implementing class warning
+        // Warning for missing implementing class - spans the entire interface declaration
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NoImplementingClass)
             .WithSpan(2, 1, 5, 2)
@@ -344,7 +360,7 @@ public class TestImplementation : ITestInterface
 
     public void TestMethod() { }
 }";
-
+            // Warning for missing parameterless constructor - spans the implementing class name
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NoParameterlessConstructor)
                 .WithSpan(8, 14, 8, 32)  // Changed end column from 31 to 32
@@ -374,7 +390,7 @@ public class SecondImplementation : ITestInterface
 {
     public void TestMethod() { }
 }";
-
+            // Warning for multiple implementations of OSInterface - spans the interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.MultipleImplementations)
                 .WithSpan(2, 1, 6, 2)
@@ -395,7 +411,7 @@ public struct TestStruct
     private int PrivateValue;
     internal string InternalProperty { get; set; }
 }";
-
+            // Warning for struct with no public members - spans the struct name
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NoPublicMembers)
                 .WithSpan(3, 15, 3, 25)
@@ -420,7 +436,7 @@ internal class TestImplementation : ITestInterface  // internal instead of publi
 {
     public void TestMethod() { }
 }";
-
+            // Warning for non-public implementing class - spans the class name
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NonPublicImplementation)
                 .WithSpan(8, 16, 8, 34)
@@ -440,7 +456,7 @@ internal struct TestStruct  // internal instead of public
 {
     public int Value;
 }";
-
+            // Warning for non-public struct with OSStructure - spans struct name
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NonPublicStruct)
                 .WithSpan(3, 17, 3, 27)
@@ -469,13 +485,13 @@ public struct TestStruct
 
             var expected = new[]
             {
-        // Error for private field
+        // Warning for private field with OSIgnore - spans the field identifier
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicIgnoredField)
             .WithSpan(8, 17, 8, 29)
             .WithArguments("IgnoredValue", "TestStruct"),
 
-        // Error for internal property
+        // Warning for internal property with OSIgnore - spans the property identifier
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicIgnoredField)
             .WithSpan(11, 21, 11, 32)
@@ -505,13 +521,13 @@ public struct TestStruct
 
             var expected = new[]
             {
-        // Error for private field
+        // Warning for private field with OSStructureField - spans the field name
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicStructureField)
             .WithSpan(8, 17, 8, 22)
             .WithArguments("Value", "TestStruct"),
 
-        // Error for internal property
+        // Warning for internal property with OSStructureField - spans the property name
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicStructureField)
             .WithSpan(11, 21, 11, 25)
@@ -538,6 +554,12 @@ public class TestImplementation : ITestInterface
     public void ValidMethod() { }
 }";
 
+            // No diagnostics expected - all code follows the rules:
+            // - Public interface with OSInterface attribute
+            // - Public implementing class
+            // - Public method
+            // - Valid method name
+            // - Single implementation
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext);
         }
 
@@ -557,7 +579,7 @@ public class TestImplementation : ITestInterface
 {
     public void Method() { }
 }";
-
+            // Warning for library name exceeding maximum length - spans interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NameTooLong)
                 .WithSpan(2, 1, 6, 2)
@@ -582,7 +604,7 @@ public class TestImplementation : IThisExternalLibraryNameIsMuchTooLongAndExceed
 {
     public void Method() { }
 }";
-
+            // Warning for interface name too long (after removing 'I' prefix) - spans interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NameTooLong)
                 .WithSpan(2, 1, 6, 2)
@@ -607,7 +629,7 @@ public class TestImplementation : ITestInterface
 {
     public void Method() { }
 }";
-
+            // Warning for name starting with number - spans the interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NameStartsWithNumber)
                 .WithSpan(2, 1, 6, 2)
@@ -632,7 +654,7 @@ public class TestImplementation : ITestInterface
 {
     public void Method() { }
 }";
-
+            // Warning for invalid characters in name - spans the interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.InvalidCharactersInName)
                 .WithSpan(2, 1, 6, 2)
@@ -652,7 +674,7 @@ public interface ITestInterface
 {
     void TestMethod();
 }";
-
+            // Warning for interface without implementing class - spans entire interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoImplementingClass)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface");
@@ -682,19 +704,19 @@ public class TestImplementation : ITestInterface
 
             var expected = new[]
             {
-        // Warning for ref parameter
+        // Warning for ref parameter - spans the entire parameter declaration
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.ReferenceParameter)
             .WithSpan(5, 22, 5, 35)
             .WithArguments("value", "UpdateValue"),
 
-        // Warning for out parameter
+        // Warning for out parameter - spans the entire parameter declaration
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.ReferenceParameter)
             .WithSpan(6, 19, 6, 34)
             .WithArguments("text", "GetValue"),
 
-        // Warning for in parameter
+        // Warning for in parameter - spans the entire parameter declaration
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.ReferenceParameter)
             .WithSpan(7, 20, 7, 36)
