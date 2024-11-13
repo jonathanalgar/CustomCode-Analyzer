@@ -51,6 +51,8 @@ public class Analyzer : DiagnosticAnalyzer
     // - Whether it's enabled by default
     // - Optional help link and custom tags
 
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05001 - not implementing
+
     private static readonly DiagnosticDescriptor NoSingleInterfaceRule = new(
         DiagnosticIds.NoSingleInterface,
         title: "Missing OSInterface declaration",
@@ -69,7 +71,7 @@ public class Analyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         customTags: WellKnownDiagnosticTags.CompilationEnd,
-        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05002");
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05003");
 
     private static readonly DiagnosticDescriptor InterfaceRule = new(
         DiagnosticIds.NonPublicInterface,
@@ -78,16 +80,17 @@ public class Analyzer : DiagnosticAnalyzer
         category: Categories.Design,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05002");
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05004");
 
-    private static readonly DiagnosticDescriptor NoUnderscoreRule = new(
-        DiagnosticIds.NameBeginsWithUnderscore,
-        title: "Name begins with underscore",
-        messageFormat: "The {0} name '{1}' should not begin with underscores",
-        category: Categories.Naming,
+    private static readonly DiagnosticDescriptor NoParameterlessConstructorRule = new(
+        DiagnosticIds.NoParameterlessConstructor,
+        title: "Missing public parameterless constructor",
+        messageFormat: "The interface decorated with OSInterface is implemented by class '{0}' which doesn't have a public parameterless constructor",
+        category: Categories.Design,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05002");
+        description: "Each class implementing an OSInterface-decorated interface must have a public parameterless constructor.",
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05005");
 
     private static readonly DiagnosticDescriptor NoImplementingClassRule = new(
         DiagnosticIds.NoImplementingClass,
@@ -99,16 +102,6 @@ public class Analyzer : DiagnosticAnalyzer
         description: "Each interface decorated with OSInterface must have an implementing class.",
         customTags: WellKnownDiagnosticTags.CompilationEnd,
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05006");
-
-    private static readonly DiagnosticDescriptor NoParameterlessConstructorRule = new(
-        DiagnosticIds.NoParameterlessConstructor,
-        title: "Missing public parameterless constructor",
-        messageFormat: "The interface decorated with OSInterface is implemented by class '{0}' which doesn't have a public parameterless constructor",
-        category: Categories.Design,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "Each class implementing an OSInterface-decorated interface must have a public parameterless constructor.",
-        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05005");
 
     private static readonly DiagnosticDescriptor EmptyInterfaceRule = new(
         DiagnosticIds.EmptyInterface,
@@ -131,15 +124,7 @@ public class Analyzer : DiagnosticAnalyzer
         customTags: WellKnownDiagnosticTags.CompilationEnd,
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05008");
 
-        private static readonly DiagnosticDescriptor NonPublicImplementationRule = new(
-        DiagnosticIds.NonPublicImplementation,
-        title: "Non-public implementation of OSInterface",
-        messageFormat: "The class that implements the interface decorated with OSInterface '{0}' must be public",
-        category: Categories.Design,
-        defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        description: "Classes implementing interfaces decorated with OSInterface must be public.",
-        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05018");
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05009 - not implementing
 
     private static readonly DiagnosticDescriptor NonPublicStructRule = new(
         DiagnosticIds.NonPublicStruct,
@@ -192,6 +177,8 @@ public class Analyzer : DiagnosticAnalyzer
         customTags: WellKnownDiagnosticTags.CompilationEnd,
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05014");
 
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05015 - TODO: implement
+
     private static readonly DiagnosticDescriptor ReferenceParameterRule = new(
         DiagnosticIds.ReferenceParameter,
         title: "Reference parameter not supported",
@@ -201,6 +188,18 @@ public class Analyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Parameters in actions must be passed by value. Return modified values instead of using reference parameters.",
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05016");
+
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05017 - TODO: implement
+
+    private static readonly DiagnosticDescriptor NonPublicImplementationRule = new(
+        DiagnosticIds.NonPublicImplementation,
+        title: "Non-public implementation of OSInterface",
+        messageFormat: "The class that implements the interface decorated with OSInterface '{0}' must be public",
+        category: Categories.Design,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Classes implementing interfaces decorated with OSInterface must be public.",
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05018");
 
     private static readonly DiagnosticDescriptor NameTooLongRule = new( 
         DiagnosticIds.NameTooLong,
@@ -231,6 +230,29 @@ public class Analyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Names must only contain letters, numbers, and underscores.",
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05021");
+
+    private static readonly DiagnosticDescriptor NoUnderscoreRule = new(
+        DiagnosticIds.NameBeginsWithUnderscore,
+        title: "Name begins with underscore",
+        messageFormat: "The {0} name '{1}' should not begin with underscores",
+        category: Categories.Naming,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05022");
+
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05023 - not implementing
+
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05024 - TODO: implement
+
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05025 - TODO: implement
+
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05026 - TODO: implement
+
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05027 - not implementing
+
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05028 - not implementing
+
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05029 - not implementing
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(
