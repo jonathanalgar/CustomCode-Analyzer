@@ -21,30 +21,23 @@ public class Program
             return;
         }
 
-        // Read the file
         var sourceText = await File.ReadAllTextAsync(filePath);
         
-        // Create syntax tree from the file
         var syntaxTree = CSharpSyntaxTree.ParseText(sourceText, path: filePath);
 
-        // Create a compilation
         var compilation = CSharpCompilation.Create(
             "FileAnalysis",
             new[] { syntaxTree },
             GetMetadataReferences(),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        // Create analyzer instance
         var analyzer = new Analyzer();
 
-        // Create the analysis context
         var compilationWithAnalyzer = compilation.WithAnalyzers(
             ImmutableArray.Create<DiagnosticAnalyzer>(analyzer));
 
-        // Get the diagnostics
         var diagnostics = await compilationWithAnalyzer.GetAnalyzerDiagnosticsAsync();
 
-        // Print results
         if (!diagnostics.Any())
         {
             Console.WriteLine("No issues found.");
@@ -56,12 +49,11 @@ public class Program
             var lineSpan = diagnostic.Location.GetLineSpan();
             var line = lineSpan.StartLinePosition.Line + 1; // Convert to 1-based line number
             var column = lineSpan.StartLinePosition.Character + 1; // Convert to 1-based column number
-            
+
             Console.WriteLine();
             Console.WriteLine($"{Path.GetFileName(filePath)}({line},{column}): " +
                             $"{diagnostic.Severity.ToString().ToLower()}: {diagnostic.Id}: {diagnostic.GetMessage()}");
 
-            // Print the offending line with an underline
             if (diagnostic.Location.SourceTree != null)
             {
                 var lineText = diagnostic.Location.SourceTree.GetText()
@@ -85,10 +77,11 @@ public class Program
         
         var assemblies = new[]
         {
-            typeof(object).Assembly, // mscorlib or System.Runtime
-            typeof(Console).Assembly, // System.Console
-            typeof(System.Runtime.AssemblyTargetedPatchBandAttribute).Assembly, // System.Runtime
-            typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly, // Microsoft.CSharp
+            typeof(object).Assembly,
+            typeof(Console).Assembly,
+            typeof(System.Runtime.AssemblyTargetedPatchBandAttribute).Assembly,
+            typeof(Microsoft.CSharp.RuntimeBinder.Binder).Assembly,
+
         };
 
         foreach (var assembly in assemblies)
@@ -96,7 +89,6 @@ public class Program
             references.Add(MetadataReference.CreateFromFile(assembly.Location));
         }
 
-        // Add netstandard
         var netstandardPath = Path.Combine(Path.GetDirectoryName(typeof(object).Assembly.Location)!, "netstandard.dll");
         if (File.Exists(netstandardPath))
         {
