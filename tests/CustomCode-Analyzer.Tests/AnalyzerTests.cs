@@ -87,7 +87,7 @@ public struct Structure2
             // Warning for duplicate structure name - spans first occurrence of the duplicate name
             // Reports both struct names (Structure1, Structure2) and the duplicate name they share (MyStructure)
             var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.DuplicateStructureName)
+                .Diagnostic(DiagnosticIds.DuplicateName)
                 .WithSpan(3, 15, 3, 25)
                 .WithArguments("Structure1, Structure2", "MyStructure");
 
@@ -166,7 +166,7 @@ public interface ITestInterface
             
         // Warning for missing implementing class - spans the entire interface declaration
         CSharpAnalyzerVerifier<Analyzer>
-            .Diagnostic(DiagnosticIds.NoImplementingClass)
+            .Diagnostic(DiagnosticIds.MissingImplementation)
             .WithSpan(2, 1, 5, 2)
             .WithArguments("ITestInterface")
     };
@@ -197,7 +197,7 @@ public class TestImplementation : ITestInterface
 }";
             // Warning for missing parameterless constructor - spans the implementing class name
             var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.NoParameterlessConstructor)
+                .Diagnostic(DiagnosticIds.NonInstantiableInterface)
                 .WithSpan(8, 14, 8, 32)  // Changed end column from 31 to 32
                 .WithArguments("TestImplementation");
 
@@ -227,7 +227,7 @@ public class SecondImplementation : ITestInterface
 }";
             // Warning for multiple implementations of OSInterface - spans the interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.MultipleImplementations)
+                .Diagnostic(DiagnosticIds.ManyImplementation)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation");
 
@@ -248,7 +248,7 @@ public struct TestStruct
 }";
             // Warning for struct with no public members - spans the struct name
             var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.NoPublicMembers)
+                .Diagnostic(DiagnosticIds.EmptyStructure)
                 .WithSpan(3, 15, 3, 25)
                 .WithArguments("TestStruct");
 
@@ -273,7 +273,7 @@ internal class TestImplementation : ITestInterface  // internal instead of publi
 }";
             // Warning for non-public implementing class - spans the class name
             var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.NonPublicImplementation)
+                .Diagnostic(DiagnosticIds.MissingPublicImplementation)
                 .WithSpan(8, 16, 8, 34)
                 .WithArguments("ITestInterface");
 
@@ -322,13 +322,13 @@ public struct TestStruct
             {
         // Warning for private field with OSIgnore - spans the field identifier
         CSharpAnalyzerVerifier<Analyzer>
-            .Diagnostic(DiagnosticIds.NonPublicIgnoredField)
+            .Diagnostic(DiagnosticIds.NonPublicIgnored)
             .WithSpan(8, 17, 8, 29)
             .WithArguments("IgnoredValue", "TestStruct"),
 
         // Warning for internal property with OSIgnore - spans the property identifier
         CSharpAnalyzerVerifier<Analyzer>
-            .Diagnostic(DiagnosticIds.NonPublicIgnoredField)
+            .Diagnostic(DiagnosticIds.NonPublicIgnored)
             .WithSpan(11, 21, 11, 32)
             .WithArguments("IgnoredName", "TestStruct")
     };
@@ -416,7 +416,7 @@ public class TestImplementation : ITestInterface
 }";
             // Warning for library name exceeding maximum length - spans interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.NameTooLong)
+                .Diagnostic(DiagnosticIds.NameMaxLengthExceeded)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
 
@@ -441,7 +441,7 @@ public class TestImplementation : IThisExternalLibraryNameIsMuchTooLongAndExceed
 }";
             // Warning for interface name too long (after removing 'I' prefix) - spans interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.NameTooLong)
+                .Diagnostic(DiagnosticIds.NameMaxLengthExceeded)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
 
@@ -466,7 +466,7 @@ public class TestImplementation : ITestInterface
 }";
             // Warning for name starting with number - spans the interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.NameStartsWithNumber)
+                .Diagnostic(DiagnosticIds.NameBeginsWithNumbers)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("123Service");
 
@@ -491,7 +491,7 @@ public class TestImplementation : ITestInterface
 }";
             // Warning for invalid characters in name - spans the interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.InvalidCharactersInName)
+                .Diagnostic(DiagnosticIds.UnsupportedCharactersInName)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("Invalid*Name@123", "*, @");
 
@@ -510,7 +510,7 @@ public interface ITestInterface
     void TestMethod();
 }";
             // Warning for interface without implementing class - spans entire interface declaration
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoImplementingClass)
+            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.MissingImplementation)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface");
 
@@ -541,19 +541,19 @@ public class TestImplementation : ITestInterface
             {
         // Warning for ref parameter - spans the entire parameter declaration
         CSharpAnalyzerVerifier<Analyzer>
-            .Diagnostic(DiagnosticIds.ReferenceParameter)
+            .Diagnostic(DiagnosticIds.ParameterByReference)
             .WithSpan(5, 22, 5, 35)
             .WithArguments("value", "UpdateValue"),
 
         // Warning for out parameter - spans the entire parameter declaration
         CSharpAnalyzerVerifier<Analyzer>
-            .Diagnostic(DiagnosticIds.ReferenceParameter)
+            .Diagnostic(DiagnosticIds.ParameterByReference)
             .WithSpan(6, 19, 6, 34)
             .WithArguments("text", "GetValue"),
 
         // Warning for in parameter - spans the entire parameter declaration
         CSharpAnalyzerVerifier<Analyzer>
-            .Diagnostic(DiagnosticIds.ReferenceParameter)
+            .Diagnostic(DiagnosticIds.ParameterByReference)
             .WithSpan(7, 20, 7, 36)
             .WithArguments("number", "ReadValue")
     };
