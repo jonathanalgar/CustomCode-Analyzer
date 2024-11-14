@@ -73,14 +73,16 @@ public class TestImplementation : ITestInterface
             Assert.IsNotNull(TestContext, "TestContext should not be null");
 
             var test = @"
-[OSStructure(Name = ""MyStructure"")]  // Using escaped quotes
-public struct Structure1
+namespace MyNamespace {
+[OSStructure]
+public struct Structure
 {
     public int Value;
 }
+}
 
-[OSStructure(Name = ""MyStructure"")]  // Using escaped quotes
-public struct Structure2
+[OSStructure]
+public struct Structure
 {
     public float Value;
 }";
@@ -88,8 +90,8 @@ public struct Structure2
             // Reports both struct names (Structure1, Structure2) and the duplicate name they share (MyStructure)
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.DuplicateName)
-                .WithSpan(3, 15, 3, 25)
-                .WithArguments("Structure1, Structure2", "MyStructure");
+                .WithSpan(11, 15, 11, 24)
+                .WithArguments("Structure, Structure", "Structure");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }
@@ -588,6 +590,84 @@ namespace Root
             // Verifies that implementing class can be in a deeper namespace than the interface.
             // This ensures the analyzer correctly traverses the namespace hierarchy.
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext);
+        }
+
+        [TestMethod]
+        public async Task InvalidDataTypeMapping_StructField_ReportWarning()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+[OSStructure]
+public struct TestStruct
+{
+    [OSStructureField(DataType = OSDataType.Text)]
+    public int Value;
+
+    [OSStructureField(DataType = OSDataType.Currency)]
+    public string Name { get; set; }
+
+    [OSStructureField(DataType = OSDataType.Currency)]
+    public decimal Currency { get; set; }
+
+    [OSStructureField(DataType = OSDataType.Decimal)]
+    public decimal MyDecimal { get; set; }
+
+    [OSStructureField(DataType = OSDataType.Email)]
+    public string Email { get; set; }
+
+    [OSStructureField(DataType = OSDataType.PhoneNumber)]
+    public string Phone { get; set; }
+}";
+
+            var expected = new[]
+            {
+        // Warning for private field with OSStructureField - spans the field name
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.UnsupportedTypeMapping)
+            .WithSpan(6, 16, 6, 21),
+
+        // Warning for internal property with OSStructureField - spans the property name
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.UnsupportedTypeMapping)
+            .WithSpan(9, 19, 9, 23)
+    };
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+        }
+
+        [TestMethod]
+        public async Task MissingStructureDecoration_ReportsWarning()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"using System.Collections.Generic;
+    [OSInterface(Name = ""TestCalculator"")]
+    public interface ICalculator 
+    {
+        int Add(MyStruct a, List<MyStruct> b);
+    }
+
+    public class Calculator : ICalculator 
+    {
+        public int Add(MyStruct a, List<MyStruct> b) 
+        {
+            return 0;
+        }
+    }
+
+    public struct MyStruct { }
+";
+            var expected = new[]
+            {
+                CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.MissingStructureDecoration)
+                    .WithSpan(5, 17, 5, 27).WithArguments("MyStruct", "a"),
+
+                CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.MissingStructureDecoration)
+                    .WithSpan(5, 29, 5, 45).WithArguments("MyStruct", "b")
+            };
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }
     }
 }

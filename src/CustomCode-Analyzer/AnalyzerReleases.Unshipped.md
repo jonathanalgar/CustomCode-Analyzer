@@ -14,9 +14,11 @@ NonPublicStructureField | Design | Warning | https://www.outsystems.com/tk/redir
 NonPublicIgnored | Design | Warning | https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05012
 EmptyStructure | Design | Warning | https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05013
 ParameterByReference | Design | Warning | https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05016
+UnsupportedTypeMapping | Design | Warning | https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05017
 MissingPublicImplementation | Design | Warning | https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05018
 NameMaxLengthExceeded | Naming | Warning | https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05019
 NameBeginsWithNumbers | Naming | Warning | https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05020
 UnsupportedCharactersInName | Naming | Warning | https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05021
 NameBeginsWithUnderscores | Naming | Warning | https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05022
 DuplicateName | Naming | Warning | https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05025
+MissingStructureDecoration | Design | Warning | https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05025

@@ -33,6 +33,8 @@ public class Analyzer : DiagnosticAnalyzer
         public const string NameBeginsWithNumbers = "NameBeginsWithNumbers";
         public const string UnsupportedCharactersInName = "UnsupportedCharactersInName";
         public const string DuplicateName = "DuplicateName";
+        public const string UnsupportedTypeMapping = "UnsupportedTypeMapping";
+        public const string MissingStructureDecoration = "MissingStructureDecoration";
     }
     /// <summary>
     /// Defines the categories used to group diagnostics.
@@ -179,7 +181,15 @@ public class Analyzer : DiagnosticAnalyzer
         description: "Parameters in actions must be passed by value. Return modified values instead of using reference parameters.",
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05016");
 
-    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05017 - TODO: implement
+    private static readonly DiagnosticDescriptor UnsupportedTypeMappingRule = new(
+        DiagnosticIds.UnsupportedTypeMapping,
+        title: "Unsupported type mapping",
+        messageFormat: "{0} has an incompatible DataType assigned and cannot be converted",
+        category: Categories.Design,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "The DataType assigned to a property or field is incompatible with its corresponding .NET type. It can't be automatically converted to the specified OutSystems type..",
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05017");
 
     private static readonly DiagnosticDescriptor MissingPublicImplementationRule = new(
         DiagnosticIds.MissingPublicImplementation,
@@ -232,6 +242,14 @@ public class Analyzer : DiagnosticAnalyzer
 
     // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05023 - not implementing
 
+    private static readonly DiagnosticDescriptor MissingStructureDecorationRule = new(
+        DiagnosticIds.MissingStructureDecoration,
+        title: "Missing structure decoration",
+        messageFormat: "The struct '{0}' used as '{1}' is missing OSStructure decoration",
+        category: Categories.Design,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05022");
     // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05024 - TODO: implement
 
     private static readonly DiagnosticDescriptor DuplicateNameRule = new(
@@ -272,7 +290,9 @@ public class Analyzer : DiagnosticAnalyzer
             NameMaxLengthExceededRule,
             NameBeginsWithNumbersRule,
             UnsupportedCharactersInNameRule,
-            DuplicateNameRule);
+            DuplicateNameRule,
+            UnsupportedTypeMappingRule,
+            MissingStructureDecorationRule);
 
     /// <summary>
     /// Initializes the analyzer by registering all necessary analysis actions.
@@ -290,7 +310,6 @@ public class Analyzer : DiagnosticAnalyzer
         {
             // Create thread-safe collections to track interfaces and structures across the compilation
             var osInterfaces = new ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)>();
-            var structureNames = new ConcurrentBag<(string Name, StructDeclarationSyntax Syntax, string StructName)>();
 
             // Helper method to search all namespaces
             IEnumerable<INamedTypeSymbol> GetAllTypesInCompilation(Compilation compilation, Func<INamedTypeSymbol, bool> predicate)
@@ -333,19 +352,6 @@ public class Analyzer : DiagnosticAnalyzer
                             .FirstOrDefault()?.GetSyntax() as StructDeclarationSyntax;
 
                         if (structDeclaration == null) return;
-
-                        // Extract the Name parameter from the OSStructure attribute if present
-                        var osStructureAttribute = typeSymbol.GetAttributes()
-                            .First(attr => attr.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure");
-
-                        var nameArg = osStructureAttribute.NamedArguments
-                            .FirstOrDefault(na => na.Key == "Name");
-
-                        // Add structure name to tracking collection if specified
-                        if (nameArg.Key != null && nameArg.Value.Value is string structureName)
-                        {
-                            structureNames.Add((structureName, structDeclaration, typeSymbol.Name));
-                        }
 
                         // Verify struct is declared as public
                         if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
@@ -411,6 +417,25 @@ public class Analyzer : DiagnosticAnalyzer
                                             location,
                                             member.Name,
                                             typeSymbol.Name));
+                                }
+                            }
+
+                            if (hasOSStructureFieldAttribute)
+                            {
+                                var osStructureField = member.GetAttributes()
+                                    .First(attr => attr.AttributeClass?.Name is "OSStructureField" or "OSStructureFieldAttribute");
+                                if (osStructureField.NamedArguments.Any(na => na.Key == "DataType"))
+                                {
+                                    var dataType = osStructureField.NamedArguments.First(na => na.Key == "DataType").Value;
+                                    var type = member is IFieldSymbol fieldSymbol ? fieldSymbol.Type :
+                                        (member is IPropertySymbol propertySymbol ? propertySymbol.Type : null);
+                                    if (AreIncompatibleTypes(type, dataType))
+                                    {
+                                        context.ReportDiagnostic(
+                                            Diagnostic.Create(
+                                                UnsupportedTypeMappingRule,
+                                                GetMemberLocation()));
+                                    }
                                 }
                             }
 
@@ -606,6 +631,28 @@ public class Analyzer : DiagnosticAnalyzer
                                                 methodSymbol.Name));
                                     }
                                 }
+                                var allStructuresNotExposed = GetAllTypesInCompilation(
+                                    context.Compilation,
+                                    t => !t.DeclaringSyntaxReferences.IsEmpty &&
+                                        t.TypeKind == TypeKind.Struct &&
+                                         !t.GetAttributes().Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure")
+                                );
+                                if (allStructuresNotExposed.Any(s => s.Name == parameter.Type.Name || ((INamedTypeSymbol)parameter.Type).IsGenericType && ((INamedTypeSymbol)parameter.Type).TypeArguments.Any(t => t.Name == s.Name)))
+                                {
+                                    var structure = allStructuresNotExposed.First(s => s.Name == parameter.Type.Name || ((INamedTypeSymbol)parameter.Type).IsGenericType && ((INamedTypeSymbol)parameter.Type).TypeArguments.Any(t => t.Name == s.Name));
+                                    // Get parameter syntax for accurate error location
+                                    var parameterSyntax = parameter.DeclaringSyntaxReferences
+                                        .FirstOrDefault()?.GetSyntax() as ParameterSyntax;
+                                    if (parameterSyntax != null)
+                                    {
+                                        context.ReportDiagnostic(
+                                        Diagnostic.Create(
+                                            MissingStructureDecorationRule,
+                                            parameterSyntax.GetLocation(),
+                                            structure.Name,
+                                            parameter.Name));
+                                    }
+                                }
                             }
                         }
                     }
@@ -749,7 +796,7 @@ public class Analyzer : DiagnosticAnalyzer
                          t.GetAttributes().Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure")
                 );
 
-                var duplicates = structureNames
+                var duplicates = allStructures
                     .GroupBy(x => x.Name)
                     .Where(g => g.Count() > 1);
 
@@ -757,22 +804,58 @@ public class Analyzer : DiagnosticAnalyzer
                 {
                     // Get the first struct (ordered by name) for consistent error reporting
                     var firstStruct = duplicate
-                        .OrderBy(d => d.StructName)
+                        .OrderBy(d => d.Name)
                         .First();
 
                     // Create comma-separated list of struct names that share the same name
                     var structNames = string.Join(", ",
-                        duplicate.Select(d => d.StructName).OrderBy(n => n));
+                        duplicate.Select(d => d.Name).OrderBy(n => n));
 
                     context.ReportDiagnostic(
                         Diagnostic.Create(
                             DuplicateNameRule,
-                            firstStruct.Syntax.Identifier.GetLocation(),
+                            firstStruct.Locations.First(),
                             structNames,
                             duplicate.Key));
                 }
 
             });
         });
+    }
+
+    private bool AreIncompatibleTypes(ITypeSymbol? type, TypedConstant dataType)
+    {
+        if (type == null) return false;
+        // https://github.com/OutSystems/OutSystems.ExternalLibraries.SDK/blob/master/src/OutSystems.ExternalLibraries.SDK/OSDataType.cs
+        // https://success.outsystems.com/documentation/outsystems_developer_cloud/errors/external_libraries_sdk_errors/os_elg_modl_05017/
+        switch (dataType.Value)
+        {
+            case 1: // Text
+                return type.Name.ToLowerInvariant() != "string";
+            case 2: // Integer
+                return type.Name.ToLowerInvariant() != "int32";
+            case 3: // LongInteger
+                return type.Name.ToLowerInvariant() != "int64";
+            case 4: // Decimal
+                return type.Name.ToLowerInvariant() != "decimal";
+            case 5: // Boolean
+                return type.Name.ToLowerInvariant() != "bool";
+            case 6: // DateTime
+                return type.Name.ToLowerInvariant() != "datetime";
+            case 7: // Date
+                return type.Name.ToLowerInvariant() != "datetime";
+            case 8: // Time
+                return type.Name.ToLowerInvariant() != "datetime";
+            case 9: // PhoneNumber
+                return type.Name.ToLowerInvariant() != "string";
+            case 10: // Email
+                return type.Name.ToLowerInvariant() != "string";
+            case 11: // BinaryData
+                return type.Name.ToLowerInvariant() != "byte[]";
+            case 12: // Currency
+                return type.Name.ToLowerInvariant() != "decimal";
+            default:
+                return true; // Unknown OSDataType
+        }
     }
 }
