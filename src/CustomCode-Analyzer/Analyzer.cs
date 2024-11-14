@@ -14,9 +14,9 @@ public class Analyzer : DiagnosticAnalyzer
     /// </summary>
     public static class DiagnosticIds
     {
-        public const string NoSingleInterface = "NoSingleInterface"; //
-        public const string ManyInterfaces = "ManyInterfaces"; //
-        public const string NonPublicInterface = "NonPublicInterface"; //
+        public const string NoSingleInterface = "NoSingleInterface";
+        public const string ManyInterfaces = "ManyInterfaces";
+        public const string NonPublicInterface = "NonPublicInterface";
         public const string NonInstantiableInterface = "NonInstantiableInterface";
         public const string EmptyInterface = "EmptyInterface";
         public const string NonPublicStruct = "NonPublicStruct";
