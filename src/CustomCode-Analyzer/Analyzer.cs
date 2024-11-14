@@ -1,9 +1,13 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Collections.Immutable;
+using System.Collections.Concurrent;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Collections.Immutable;
-using System.Collections.Concurrent;
+
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class Analyzer : DiagnosticAnalyzer
@@ -468,7 +472,7 @@ public class Analyzer : DiagnosticAnalyzer
                             }
 
                             // Extract library name from attribute or interface name
-                            string? libraryName = null;
+                            string libraryName = null;
 
                             // First check Name property in attribute
                             var nameArg = osInterfaceAttribute.NamedArguments
@@ -492,7 +496,7 @@ public class Analyzer : DiagnosticAnalyzer
                             if (libraryName == null)
                             {
                                 libraryName = typeSymbol.Name.StartsWith("I", StringComparison.Ordinal) ?
-                                    typeSymbol.Name[1..] : typeSymbol.Name;
+                                    typeSymbol.Name.Substring(1) : typeSymbol.Name;
                             }
 
                             // Validate library name constraints
