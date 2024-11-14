@@ -261,7 +261,6 @@ public class Analyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         customTags: WellKnownDiagnosticTags.CompilationEnd,
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05025");
-    //  - TODO: implement
 
     // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05026 - TODO: implement
 
