@@ -560,5 +560,34 @@ public class TestImplementation : ITestInterface
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
         }
+        [TestMethod]
+        public async Task ValidImplementation_DeeperNamespace_NoWarning()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+namespace Root 
+{
+    [OSInterface(Name = ""TestCalculator"")]
+    public interface ICalculator 
+    {
+        int Add(int a, int b);
+    }
+
+    namespace Services.Math
+    {
+        public class Calculator : Root.ICalculator 
+        {
+            public int Add(int a, int b) 
+            {
+                return a + b;
+            }
+        }
+    }
+}";
+            // Verifies that implementing class can be in a deeper namespace than the interface.
+            // This ensures the analyzer correctly traverses the namespace hierarchy.
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext);
+        }
     }
 }

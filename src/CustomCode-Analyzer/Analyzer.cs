@@ -293,6 +293,30 @@ public class Analyzer : DiagnosticAnalyzer
             var osInterfaces = new ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)>();
             var structureNames = new ConcurrentBag<(string Name, StructDeclarationSyntax Syntax, string StructName)>();
 
+            // Helper method to search all namespaces
+            IEnumerable<INamedTypeSymbol> GetAllTypesInCompilation(Compilation compilation, Func<INamedTypeSymbol, bool> predicate)
+            {
+                var stack = new Stack<INamespaceSymbol>();
+                stack.Push(compilation.GlobalNamespace);
+
+                while (stack.Count > 0)
+                {
+                    var current = stack.Pop();
+
+                    // Get types in current namespace
+                    foreach (var type in current.GetTypeMembers().Where(predicate))
+                    {
+                        yield return type;
+                    }
+
+                    // Add nested namespaces to stack
+                    foreach (var nested in current.GetNamespaceMembers())
+                    {
+                        stack.Push(nested);
+                    }
+                }
+            }
+
             // Register handler for struct analysis
             compilationContext.RegisterSymbolAction(context =>
             {
@@ -650,18 +674,23 @@ public class Analyzer : DiagnosticAnalyzer
             {
                 if (osInterfaces.Count == 0)
                 {
-                    // If no OSInterface found, only report if there are any interfaces at all
-                    var interfaces = context.Compilation.GlobalNamespace.GetTypeMembers()
-                        .Where(t => t.TypeKind == TypeKind.Interface);
+                    // Check if any interfaces exist in any namespace
+                    var anyInterface = GetAllTypesInCompilation(
+                        context.Compilation,
+                        t => t.TypeKind == TypeKind.Interface).Any();
 
-                    if (interfaces.Any())
+                    if (anyInterface)
                     {
                         // Report missing OSInterface only if at least one interface exists
-                        var firstInterface = interfaces.First().DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                        if (firstInterface != null)
+                        var firstInterface = GetAllTypesInCompilation(
+                            context.Compilation,
+                            t => t.TypeKind == TypeKind.Interface).First();
+
+                        var syntax = firstInterface.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                        if (syntax != null)
                         {
                             context.ReportDiagnostic(
-                                Diagnostic.Create(NoSingleInterfaceRule, firstInterface.GetLocation()));
+                                Diagnostic.Create(NoSingleInterfaceRule, syntax.GetLocation()));
                         }
                     }
                 }
@@ -685,16 +714,15 @@ public class Analyzer : DiagnosticAnalyzer
                     // Exactly one OSInterface found - validate its implementation
                     var osInterface = osInterfaces.Values.First();
 
-                    // Find all classes that implement this interface
-                    var implementations = context.Compilation.GlobalNamespace
-                        .GetTypeMembers()
-                        .Where(t => t.TypeKind == TypeKind.Class &&
-                               t.Interfaces.Contains(osInterface.Symbol))
-                        .ToList();
+                    // Find implementing classes in all namespaces
+                    var implementations = GetAllTypesInCompilation(
+                        context.Compilation,
+                        t => t.TypeKind == TypeKind.Class &&
+                             t.Interfaces.Contains(osInterface.Symbol, SymbolEqualityComparer.Default)
+                    ).ToList();
 
                     if (!implementations.Any())
                     {
-                        // No implementing class found
                         context.ReportDiagnostic(
                             Diagnostic.Create(
                                 NoImplementingClassRule,
@@ -703,7 +731,6 @@ public class Analyzer : DiagnosticAnalyzer
                     }
                     else if (implementations.Count > 1)
                     {
-                        // Multiple implementations found - create list of class names
                         var implementationNames = string.Join(", ",
                             implementations.Select(i => i.Name).OrderBy(name => name));
 
@@ -717,12 +744,17 @@ public class Analyzer : DiagnosticAnalyzer
                 }
 
                 // Check for duplicate structure names
-                var duplicateNames = structureNames
-                    .GroupBy(x => x.Name)
-                    .Where(g => g.Count() > 1)
-                    .ToList();
+                var allStructures = GetAllTypesInCompilation(
+                    context.Compilation,
+                    t => t.TypeKind == TypeKind.Struct &&
+                         t.GetAttributes().Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure")
+                );
 
-                foreach (var duplicate in duplicateNames)
+                var duplicates = structureNames
+                    .GroupBy(x => x.Name)
+                    .Where(g => g.Count() > 1);
+
+                foreach (var duplicate in duplicates)
                 {
                     // Get the first struct (ordered by name) for consistent error reporting
                     var firstStruct = duplicate
