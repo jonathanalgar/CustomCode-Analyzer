@@ -31,7 +31,7 @@ public class TestImplementation : ITestInterface
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -64,7 +64,7 @@ public class TestImplementation : ITestInterface
             .WithArguments("Method", "_TestMethod")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -93,7 +93,7 @@ public struct Structure
                 .WithSpan(11, 15, 11, 24)
                 .WithArguments("Structure, Structure", "Structure");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -128,7 +128,7 @@ public class SecondImplementation : ISecondInterface
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("IFirstInterface, ISecondInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -145,7 +145,7 @@ public interface ITestInterface
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoSingleInterface)
                 .WithSpan(2, 1, 5, 2);
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -173,7 +173,7 @@ public interface ITestInterface
             .WithArguments("ITestInterface")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
 
@@ -203,7 +203,7 @@ public class TestImplementation : ITestInterface
                 .WithSpan(8, 14, 8, 32)  // Changed end column from 31 to 32
                 .WithArguments("TestImplementation");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -233,7 +233,7 @@ public class SecondImplementation : ITestInterface
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -254,7 +254,7 @@ public struct TestStruct
                 .WithSpan(3, 15, 3, 25)
                 .WithArguments("TestStruct");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -279,7 +279,7 @@ internal class TestImplementation : ITestInterface  // internal instead of publi
                 .WithSpan(8, 16, 8, 34)
                 .WithArguments("ITestInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -299,7 +299,7 @@ internal struct TestStruct  // internal instead of public
                 .WithSpan(3, 17, 3, 27)
                 .WithArguments("TestStruct");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -335,7 +335,7 @@ public struct TestStruct
             .WithArguments("IgnoredName", "TestStruct")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -371,7 +371,7 @@ public struct TestStruct
             .WithArguments("Name", "TestStruct")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -422,7 +422,7 @@ public class TestImplementation : ITestInterface
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -447,7 +447,7 @@ public class TestImplementation : IThisExternalLibraryNameIsMuchTooLongAndExceed
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -472,7 +472,7 @@ public class TestImplementation : ITestInterface
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("123Service");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -497,7 +497,7 @@ public class TestImplementation : ITestInterface
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("Invalid*Name@123", "*, @");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -516,7 +516,7 @@ public interface ITestInterface
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         [TestMethod]
         public async Task ReferenceParameter_ReportsWarning()
@@ -560,7 +560,7 @@ public class TestImplementation : ITestInterface
             .WithArguments("number", "ReadValue")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         [TestMethod]
         public async Task ValidImplementation_DeeperNamespace_NoWarning()
@@ -633,7 +633,7 @@ public struct TestStruct
             .WithSpan(9, 19, 9, 23)
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -667,7 +667,30 @@ public struct TestStruct
                     .WithSpan(5, 29, 5, 45).WithArguments("MyStruct", "b")
             };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, expected);
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+        }
+
+
+        [TestMethod]
+        public async Task AnalyzerRules_Disabled_IfSDKNotAvailable()
+        {
+            Assert.IsNotNull(TestContext, "TestContext should not be null");
+
+            var test = @"
+    public interface ICalculator 
+    {
+        int Add(int a, int b);
+    }
+
+    public class Calculator : ICalculator 
+    {
+        public int Add(int a, int b) 
+        {
+            return a + b;
+        }
+    }
+";
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: true);
         }
     }
 }

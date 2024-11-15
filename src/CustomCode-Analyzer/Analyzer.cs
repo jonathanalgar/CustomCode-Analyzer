@@ -253,8 +253,7 @@ public class Analyzer : DiagnosticAnalyzer
         category: Categories.Design,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05022");
-    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05024 - TODO: implement
+        helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05024");
 
     private static readonly DiagnosticDescriptor DuplicateNameRule = new(
         DiagnosticIds.DuplicateName,
@@ -266,7 +265,7 @@ public class Analyzer : DiagnosticAnalyzer
         customTags: WellKnownDiagnosticTags.CompilationEnd,
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05025");
 
-    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05026 - TODO: implement
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05026 - not implementing
 
     // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05027 - not implementing
 
@@ -311,7 +310,12 @@ public class Analyzer : DiagnosticAnalyzer
 
         context.RegisterCompilationStartAction(compilationContext =>
         {
-            // Create thread-safe collections to track interfaces and structures across the compilation
+            bool isPackageReferenced = compilationContext.Compilation.ReferencedAssemblyNames
+                .Any(reference => reference.Name.Equals("OutSystems.ExternalLibraries.SDK", StringComparison.OrdinalIgnoreCase));
+
+            if (!isPackageReferenced) { return; }
+
+            // Create thread-safe collections to track interfaces across the compilation
             var osInterfaces = new ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)>();
 
             // Helper method to search all namespaces
@@ -799,9 +803,11 @@ public class Analyzer : DiagnosticAnalyzer
                          t.GetAttributes().Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure")
                 );
 
+#pragma warning disable RS1024 // Compare symbols correctly
                 var duplicates = allStructures
                     .GroupBy(x => x.Name)
                     .Where(g => g.Count() > 1);
+#pragma warning restore RS1024 // Compare symbols correctly
 
                 foreach (var duplicate in duplicates)
                 {
@@ -826,7 +832,7 @@ public class Analyzer : DiagnosticAnalyzer
         });
     }
 
-    private bool AreIncompatibleTypes(ITypeSymbol? type, TypedConstant dataType)
+    private bool AreIncompatibleTypes(ITypeSymbol type, TypedConstant dataType)
     {
         if (type == null) return false;
         // https://github.com/OutSystems/OutSystems.ExternalLibraries.SDK/blob/master/src/OutSystems.ExternalLibraries.SDK/OSDataType.cs
