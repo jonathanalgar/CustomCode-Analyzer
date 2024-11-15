@@ -799,9 +799,11 @@ public class Analyzer : DiagnosticAnalyzer
                          t.GetAttributes().Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure")
                 );
 
+                #pragma warning disable RS1024
                 var duplicates = allStructures
                     .GroupBy(x => x.Name)
                     .Where(g => g.Count() > 1);
+                #pragma warning restore RS1024
 
                 foreach (var duplicate in duplicates)
                 {
@@ -826,10 +828,9 @@ public class Analyzer : DiagnosticAnalyzer
         });
     }
 
-    private bool AreIncompatibleTypes(ITypeSymbol? type, TypedConstant dataType)
+    private bool AreIncompatibleTypes(ITypeSymbol type, TypedConstant dataType)
     {
         if (type == null) return false;
-        // https://github.com/OutSystems/OutSystems.ExternalLibraries.SDK/blob/master/src/OutSystems.ExternalLibraries.SDK/OSDataType.cs
         // https://success.outsystems.com/documentation/outsystems_developer_cloud/errors/external_libraries_sdk_errors/os_elg_modl_05017/
         switch (dataType.Value)
         {
