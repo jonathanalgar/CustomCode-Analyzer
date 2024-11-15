@@ -16,22 +16,21 @@ namespace CustomCode_Analyzer.Tests
             => CSharpAnalyzerVerifier<TAnalyzer, DefaultVerifier>.Diagnostic(diagnosticId);
 
         // Main method to verify analyzer behavior against source code
-        public static async Task VerifyAnalyzerAsync(string source, TestContext testContext, params DiagnosticResult[] expected)
+        public static async Task VerifyAnalyzerAsync(string source, TestContext testContext, bool skipSDKreference = false, params DiagnosticResult[] expected)
         {
-            source = @"using System;using OutSystems.ExternalLibraries.SDK;" + source;
+            if (!skipSDKreference)
+            {
+                source = @"using System;using OutSystems.ExternalLibraries.SDK;" + source;
+                
+            }
 
             var logger = new DetailedTestLogger(testContext);
-            var test = new Test(logger) { TestCode = source };
+            var test = new Test(logger, skipSDKreference) { TestCode = source };
 
             logger.WriteLine($"Running test: {testContext.TestName}");
             logger.WriteLine("\nAnalyzing source code:");
             logger.WriteLine(source);
 
-            // Add required attribute definitions that would normally be in referenced assemblies
-            test.TestState.Sources.Add(@"
-                using System;
-                using OutSystems.ExternalLibraries.SDK;
-            ");
             // Add expected diagnostics to test
             test.ExpectedDiagnostics.AddRange(expected);
 
@@ -51,12 +50,16 @@ namespace CustomCode_Analyzer.Tests
         {
             private readonly ITestOutputHelper _logger;
 
-            public Test(ITestOutputHelper logger)
+            public Test(ITestOutputHelper logger, bool skipSDKreference = false)
             {
                 // Configure test to use .NET 8.0 reference assemblies
                 _logger = logger;
-                ReferenceAssemblies = ReferenceAssemblies.Net.Net80
-                    .WithPackages([new PackageIdentity("OutSystems.ExternalLibraries.SDK", "1.5.0")]);
+                ReferenceAssemblies = ReferenceAssemblies.Net.Net80;
+
+                if(!skipSDKreference)
+                {
+                    ReferenceAssemblies = ReferenceAssemblies.WithPackages([new PackageIdentity("OutSystems.ExternalLibraries.SDK", "1.5.0")]);
+                }
 
                 // Add solution-wide configuration for nullable warnings
                 SolutionTransforms.Add((solution, projectId) =>
