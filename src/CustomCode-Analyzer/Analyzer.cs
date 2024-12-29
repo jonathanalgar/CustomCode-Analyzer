@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Collections.Immutable;
-using System.Collections.Concurrent;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -173,6 +172,8 @@ public class Analyzer : DiagnosticAnalyzer
         description: "Structs decorated with OSStructure must have at least one public property or field.",
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05013");
 
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05014 - TODO: implement
+
     // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05015 - TODO: implement
 
     private static readonly DiagnosticDescriptor ParameterByReferenceRule = new(
@@ -205,7 +206,7 @@ public class Analyzer : DiagnosticAnalyzer
         description: "Classes implementing interfaces decorated with OSInterface must be public.",
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05018");
 
-    private static readonly DiagnosticDescriptor NameMaxLengthExceededRule = new( 
+    private static readonly DiagnosticDescriptor NameMaxLengthExceededRule = new(
         DiagnosticIds.NameMaxLengthExceeded,
         title: "Name exceeds maximum length",
         messageFormat: "The name '{0}' is not supported as it has more than 50 characters",
@@ -265,7 +266,7 @@ public class Analyzer : DiagnosticAnalyzer
         customTags: WellKnownDiagnosticTags.CompilationEnd,
         helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05025");
 
-    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05026 - not implementing
+    // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05026 - TODO: implement
 
     // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05027 - not implementing
 
@@ -355,10 +356,11 @@ public class Analyzer : DiagnosticAnalyzer
                     if (hasOSStructureAttribute)
                     {
                         // Get the syntax node for the struct declaration
-                        var structDeclaration = typeSymbol.DeclaringSyntaxReferences
-                            .FirstOrDefault()?.GetSyntax() as StructDeclarationSyntax;
-
-                        if (structDeclaration == null) return;
+                        if (typeSymbol.DeclaringSyntaxReferences
+                            .FirstOrDefault()?.GetSyntax() is not StructDeclarationSyntax structDeclaration)
+                        {
+                            return;
+                        }
 
                         // Verify struct is declared as public
                         if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
@@ -391,22 +393,15 @@ public class Analyzer : DiagnosticAnalyzer
                             // Helper function to get the source location for error reporting
                             Location GetMemberLocation()
                             {
-                                var syntax = member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                                if (syntax == null) return Location.None;
+                                if (member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not SyntaxNode syntax)
+                                    return Location.None;
 
-                                if (member is IFieldSymbol)
+                                return (member, syntax) switch
                                 {
-                                    var variableDeclarator = syntax as VariableDeclaratorSyntax;
-                                    if (variableDeclarator != null)
-                                    {
-                                        return variableDeclarator.Identifier.GetLocation();
-                                    }
-                                }
-                                else if (member is IPropertySymbol && syntax is PropertyDeclarationSyntax propertyDeclaration)
-                                {
-                                    return propertyDeclaration.Identifier.GetLocation();
-                                }
-                                return Location.None;
+                                    (IFieldSymbol, VariableDeclaratorSyntax declarator) => declarator.Identifier.GetLocation(),
+                                    (IPropertySymbol, PropertyDeclarationSyntax property) => property.Identifier.GetLocation(),
+                                    _ => Location.None
+                                };
                             }
 
                             // Check OSStructureField attribute requirements
@@ -520,11 +515,8 @@ public class Analyzer : DiagnosticAnalyzer
                             }
 
                             // If no name specified in attributes, use interface name without 'I' prefix
-                            if (libraryName == null)
-                            {
-                                libraryName = typeSymbol.Name.StartsWith("I", StringComparison.Ordinal) ?
+                            libraryName ??= typeSymbol.Name.StartsWith("I", StringComparison.Ordinal) ?
                                     typeSymbol.Name.Substring(1) : typeSymbol.Name;
-                            }
 
                             // Validate library name constraints
                             // Check maximum length (50 characters)
@@ -621,14 +613,9 @@ public class Analyzer : DiagnosticAnalyzer
                             // Check each parameter for ref/out/in modifiers
                             foreach (var parameter in methodSymbol.Parameters)
                             {
-                                if (parameter.RefKind == RefKind.Ref ||
-                                    parameter.RefKind == RefKind.Out ||
-                                    parameter.RefKind == RefKind.In)
+                                if (parameter.RefKind is RefKind.Ref or RefKind.Out or RefKind.In)
                                 {
-                                    // Get parameter syntax for accurate error location
-                                    var parameterSyntax = parameter.DeclaringSyntaxReferences
-                                        .FirstOrDefault()?.GetSyntax() as ParameterSyntax;
-                                    if (parameterSyntax != null)
+                                    if (parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ParameterSyntax parameterSyntax)
                                     {
                                         context.ReportDiagnostic(
                                             Diagnostic.Create(
@@ -646,18 +633,19 @@ public class Analyzer : DiagnosticAnalyzer
                                 );
                                 if (allStructuresNotExposed.Any(s => s.Name == parameter.Type.Name || ((INamedTypeSymbol)parameter.Type).IsGenericType && ((INamedTypeSymbol)parameter.Type).TypeArguments.Any(t => t.Name == s.Name)))
                                 {
-                                    var structure = allStructuresNotExposed.First(s => s.Name == parameter.Type.Name || ((INamedTypeSymbol)parameter.Type).IsGenericType && ((INamedTypeSymbol)parameter.Type).TypeArguments.Any(t => t.Name == s.Name));
+                                    var structure = allStructuresNotExposed.First(s => s.Name == parameter.Type.Name ||
+                                        ((INamedTypeSymbol)parameter.Type).IsGenericType &&
+                                        ((INamedTypeSymbol)parameter.Type).TypeArguments.Any(t => t.Name == s.Name));
+
                                     // Get parameter syntax for accurate error location
-                                    var parameterSyntax = parameter.DeclaringSyntaxReferences
-                                        .FirstOrDefault()?.GetSyntax() as ParameterSyntax;
-                                    if (parameterSyntax != null)
+                                    if (parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ParameterSyntax parameterSyntax)
                                     {
                                         context.ReportDiagnostic(
-                                        Diagnostic.Create(
-                                            MissingStructureDecorationRule,
-                                            parameterSyntax.GetLocation(),
-                                            structure.Name,
-                                            parameter.Name));
+                                            Diagnostic.Create(
+                                                MissingStructureDecorationRule,
+                                                parameterSyntax.GetLocation(),
+                                                structure.Name,
+                                                parameter.Name));
                                     }
                                 }
                             }
@@ -682,19 +670,14 @@ public class Analyzer : DiagnosticAnalyzer
                         if (hasOSInterfaceAttribute)
                         {
                             // Verify implementing class is public
-                            if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
+                            if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public) &&
+                                typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ClassDeclarationSyntax publicClassDeclaration)
                             {
-                                var classDeclaration = typeSymbol.DeclaringSyntaxReferences
-                                    .FirstOrDefault()?.GetSyntax() as ClassDeclarationSyntax;
-
-                                if (classDeclaration != null)
-                                {
-                                    context.ReportDiagnostic(
-                                        Diagnostic.Create(
-                                            MissingPublicImplementationRule,
-                                            classDeclaration.Identifier.GetLocation(),
-                                            implementedInterface.Name));
-                                }
+                                context.ReportDiagnostic(
+                                    Diagnostic.Create(
+                                        MissingPublicImplementationRule,
+                                        publicClassDeclaration.Identifier.GetLocation(),
+                                        implementedInterface.Name));
                             }
 
                             // Check for public parameterless constructor
@@ -702,19 +685,14 @@ public class Analyzer : DiagnosticAnalyzer
                                 c.DeclaredAccessibility == Accessibility.Public &&
                                 c.Parameters.Length == 0);
 
-                            if (!hasPublicParameterlessConstructor)
+                            if (!hasPublicParameterlessConstructor &&
+                                typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ClassDeclarationSyntax constructorClassDeclaration)
                             {
-                                var classDeclaration = typeSymbol.DeclaringSyntaxReferences
-                                    .FirstOrDefault()?.GetSyntax() as ClassDeclarationSyntax;
-
-                                if (classDeclaration != null)
-                                {
-                                    context.ReportDiagnostic(
-                                        Diagnostic.Create(
-                                            NonInstantiableInterfaceRule,
-                                            classDeclaration.Identifier.GetLocation(),
-                                            typeSymbol.Name));
-                                }
+                                context.ReportDiagnostic(
+                                    Diagnostic.Create(
+                                        NonInstantiableInterfaceRule,
+                                        constructorClassDeclaration.Identifier.GetLocation(),
+                                        typeSymbol.Name));
                             }
                         }
                     }
@@ -728,30 +706,25 @@ public class Analyzer : DiagnosticAnalyzer
                 if (osInterfaces.Count == 0)
                 {
                     // Check if any interfaces exist in any namespace
-                    var anyInterface = GetAllTypesInCompilation(
+                    var interfaces = GetAllTypesInCompilation(
                         context.Compilation,
-                        t => t.TypeKind == TypeKind.Interface).Any();
+                        t => !t.DeclaringSyntaxReferences.IsEmpty &&
+                             t.TypeKind == TypeKind.Interface).ToList();
 
-                    if (anyInterface)
+                    if (interfaces.Any() &&
+                       interfaces.First().DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is InterfaceDeclarationSyntax interfaceDeclaration)
                     {
-                        // Report missing OSInterface only if at least one interface exists
-                        var firstInterface = GetAllTypesInCompilation(
-                            context.Compilation,
-                            t => t.TypeKind == TypeKind.Interface).First();
-
-                        var syntax = firstInterface.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
-                        if (syntax != null)
-                        {
-                            context.ReportDiagnostic(
-                                Diagnostic.Create(NoSingleInterfaceRule, syntax.GetLocation()));
-                        }
+                        context.ReportDiagnostic(
+                            Diagnostic.Create(
+                                NoSingleInterfaceRule,
+                                interfaceDeclaration.GetLocation()));
                     }
                 }
                 else if (osInterfaces.Count > 1)
                 {
                     // Multiple OSInterfaces found
                     // Get the first interface by source location for error reporting
-                    var firstInterface = osInterfaces.Values
+                    var (Syntax, Symbol) = osInterfaces.Values
                         .OrderBy(i => i.Syntax.GetLocation().GetLineSpan().StartLinePosition)
                         .First();
 
@@ -760,18 +733,18 @@ public class Analyzer : DiagnosticAnalyzer
                         osInterfaces.Keys.OrderBy(name => name));
 
                     context.ReportDiagnostic(
-                        Diagnostic.Create(ManyInterfacesRule, firstInterface.Syntax.GetLocation(), interfaceNames));
+                        Diagnostic.Create(ManyInterfacesRule, Syntax.GetLocation(), interfaceNames));
                 }
                 else
                 {
                     // Exactly one OSInterface found - validate its implementation
-                    var osInterface = osInterfaces.Values.First();
+                    var (Syntax, Symbol) = osInterfaces.Values.First();
 
                     // Find implementing classes in all namespaces
                     var implementations = GetAllTypesInCompilation(
                         context.Compilation,
                         t => t.TypeKind == TypeKind.Class &&
-                             t.Interfaces.Contains(osInterface.Symbol, SymbolEqualityComparer.Default)
+                             t.Interfaces.Contains(Symbol, SymbolEqualityComparer.Default)
                     ).ToList();
 
                     if (!implementations.Any())
@@ -779,8 +752,8 @@ public class Analyzer : DiagnosticAnalyzer
                         context.ReportDiagnostic(
                             Diagnostic.Create(
                                 MissingImplementationRule,
-                                osInterface.Syntax.GetLocation(),
-                                osInterface.Symbol.Name));
+                                Syntax.GetLocation(),
+                                Symbol.Name));
                     }
                     else if (implementations.Count > 1)
                     {
@@ -790,8 +763,8 @@ public class Analyzer : DiagnosticAnalyzer
                         context.ReportDiagnostic(
                             Diagnostic.Create(
                                 ManyImplementationRule,
-                                osInterface.Syntax.GetLocation(),
-                                osInterface.Symbol.Name,
+                                Syntax.GetLocation(),
+                                Symbol.Name,
                                 implementationNames));
                     }
                 }
@@ -803,11 +776,11 @@ public class Analyzer : DiagnosticAnalyzer
                          t.GetAttributes().Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure")
                 );
 
-                #pragma warning disable RS1024
+#pragma warning disable RS1024
                 var duplicates = allStructures
                     .GroupBy(x => x.Name)
                     .Where(g => g.Count() > 1);
-                #pragma warning restore RS1024
+#pragma warning restore RS1024
 
                 foreach (var duplicate in duplicates)
                 {
@@ -835,35 +808,33 @@ public class Analyzer : DiagnosticAnalyzer
     private bool AreIncompatibleTypes(ITypeSymbol type, TypedConstant dataType)
     {
         if (type == null) return false;
-        // https://success.outsystems.com/documentation/outsystems_developer_cloud/errors/external_libraries_sdk_errors/os_elg_modl_05017/
-        switch (dataType.Value)
+        return dataType.Value switch
         {
-            case 1: // Text
-                return type.Name.ToLowerInvariant() != "string";
-            case 2: // Integer
-                return type.Name.ToLowerInvariant() != "int32";
-            case 3: // LongInteger
-                return type.Name.ToLowerInvariant() != "int64";
-            case 4: // Decimal
-                return type.Name.ToLowerInvariant() != "decimal";
-            case 5: // Boolean
-                return type.Name.ToLowerInvariant() != "bool";
-            case 6: // DateTime
-                return type.Name.ToLowerInvariant() != "datetime";
-            case 7: // Date
-                return type.Name.ToLowerInvariant() != "datetime";
-            case 8: // Time
-                return type.Name.ToLowerInvariant() != "datetime";
-            case 9: // PhoneNumber
-                return type.Name.ToLowerInvariant() != "string";
-            case 10: // Email
-                return type.Name.ToLowerInvariant() != "string";
-            case 11: // BinaryData
-                return type.Name.ToLowerInvariant() != "byte[]";
-            case 12: // Currency
-                return type.Name.ToLowerInvariant() != "decimal";
-            default:
-                return true; // Unknown OSDataType
-        }
+            // Text
+            1 => type.Name.ToLowerInvariant() != "string",
+            // Integer
+            2 => type.Name.ToLowerInvariant() != "int32",
+            // LongInteger
+            3 => type.Name.ToLowerInvariant() != "int64",
+            // Decimal
+            4 => type.Name.ToLowerInvariant() != "decimal",
+            // Boolean
+            5 => type.Name.ToLowerInvariant() != "bool",
+            // DateTime
+            6 => type.Name.ToLowerInvariant() != "datetime",
+            // Date
+            7 => type.Name.ToLowerInvariant() != "datetime",
+            // Time
+            8 => type.Name.ToLowerInvariant() != "datetime",
+            // PhoneNumber
+            9 => type.Name.ToLowerInvariant() != "string",
+            // Email
+            10 => type.Name.ToLowerInvariant() != "string",
+            // BinaryData
+            11 => type.Name.ToLowerInvariant() != "byte[]",
+            // Currency
+            12 => type.Name.ToLowerInvariant() != "decimal",
+            _ => true,// Unknown OSDataType
+        };
     }
 }

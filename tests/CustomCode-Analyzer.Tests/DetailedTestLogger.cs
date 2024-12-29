@@ -10,18 +10,18 @@ namespace CustomCode_Analyzer.Tests
     /// </summary>
     public class DetailedTestLogger : ITestOutputHelper
     {
-        private readonly TestContext _testContext;
+        private readonly TestContext TestContext;
         private readonly StringBuilder _output = new();
 
         public DetailedTestLogger(TestContext testContext)
         {
-            _testContext = testContext;
+            TestContext = testContext;
         }
 
         public void WriteLine(string message)
         {
             _output.AppendLine(message);
-            _testContext.WriteLine(message);
+            TestContext.WriteLine(message);
         }
 
         public void WriteLine(string format, params object[] args)
