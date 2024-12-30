@@ -27,5 +27,8 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Build and test
-      run: msbuild /t:Rebuild,VSTest /p:Configuration=Release /p:DeployExtension=false /p:ZipPackageCompressionLevel=Normal /m:4
+    - name: Build
+      run: msbuild /p:Configuration=Release /p:DeployExtension=false /p:ZipPackageCompressionLevel=Normal /m:4
+
+    - name: Test
+      run: dotnet test --configuration Release --verbosity normal
