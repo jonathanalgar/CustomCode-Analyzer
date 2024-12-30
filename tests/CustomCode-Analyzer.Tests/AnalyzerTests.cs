@@ -660,7 +660,168 @@ namespace TestNamespace
 
         // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05014 - TODO: implement
 
-        // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05015 - TODO: implement
+        // --------------- UnsupportedParameterTypeRule (OS-ELG-MODL-05015) --------
+
+        [TestMethod]
+        public async Task UnsupportedParameterTypeRule_InGlobalScope_PublicField_UnsupportedType_ReportsWarning()
+        {
+            var test = @"
+[OSStructure]
+public struct MyStructure
+{
+    public int SupportedValue;
+    public UnsupportedType UnsupportedField; // Unsupported type
+}
+
+public struct UnsupportedType { }
+";
+            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.UnsupportedParameterType)
+                .WithSpan(6, 28, 6, 44)
+                .WithArguments("MyStructure", "UnsupportedType");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+        }
+
+        [TestMethod]
+        public async Task UnsupportedParameterTypeRule_InGlobalScope_PublicProperty_UnsupportedType_ReportsWarning()
+        {
+            var test = @"
+[OSStructure]
+public struct MyStructure
+{
+    public string SupportedProperty { get; set; }
+    public UnsupportedType UnsupportedProperty { get; set; } // Unsupported type
+}
+
+public struct UnsupportedType { }
+";
+            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.UnsupportedParameterType)
+                .WithSpan(6, 5, 6, 61)
+                .WithArguments("MyStructure", "UnsupportedType");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+        }
+
+        [TestMethod]
+        public async Task UnsupportedParameterTypeRule_InGlobalScope_PublicField_SupportedType_NoWarning()
+        {
+            var test = @"
+using System.Collections.Generic;
+
+[OSStructure]
+public struct MyStructure
+{
+    public int SupportedValue;
+    public string SupportedField;
+    public List<int> SupportedList;
+}
+";
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+        }
+
+        [TestMethod]
+        public async Task UnsupportedParameterTypeRule_InGlobalScope_PublicProperty_StructWithOSStructure_NoWarning()
+        {
+            var test = @"
+[OSStructure]
+public struct NestedStructure
+{
+    public int Value;
+}
+
+[OSStructure]
+public struct MyStructure
+{
+    public NestedStructure SupportedNested;
+}
+";
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+        }
+
+        [TestMethod]
+        public async Task UnsupportedParameterTypeRule_InGlobalScope_PublicField_ListOfSupportedType_NoWarning()
+        {
+            var test = @"
+using System.Collections.Generic;
+
+[OSStructure]
+public struct MyStructure
+{
+    public List<string> SupportedList;
+    public IEnumerable<int> SupportedEnumerable;
+}
+";
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+        }
+
+        [TestMethod]
+        public async Task UnsupportedParameterTypeRule_InGlobalScope_PublicField_ListOfUnsupportedType_ReportsWarning()
+        {
+            var test = @"
+using System.Collections.Generic;
+
+[OSStructure]
+public struct MyStructure
+{
+    public List<UnsupportedType> UnsupportedList;
+}
+
+public struct UnsupportedType { }
+    ";
+            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.UnsupportedParameterType)
+                .WithSpan(7, 34, 7, 49)
+                .WithArguments("MyStructure", "System.Collections.Generic.List<UnsupportedType>");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+        }
+
+        [TestMethod]
+        public async Task UnsupportedParameterTypeRule_InGlobalScope_PrivateField_UnsupportedType_NoWarning()
+        {
+            var test = @"
+[OSStructure]
+public struct MyStructure
+{
+    public int ValidField;
+    private UnsupportedType PrivateField; // Private field should not be analyzed
+}
+
+public struct UnsupportedType { }
+";
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+        }
+
+        [TestMethod]
+        public async Task UnsupportedParameterTypeRule_InGlobalScope_InternalProperty_UnsupportedType_NoWarning()
+        {
+            var test = @"
+[OSStructure]
+public struct MyStructure
+{
+    public string ValidProperty { get; set; }
+    internal UnsupportedType InternalProperty { get; set; } // Internal property should not be analyzed
+}
+
+public struct UnsupportedType { }
+";
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+        }
+
+        [TestMethod]
+        public async Task UnsupportedParameterTypeRule_InGlobalScope_StructWithoutOSStructure_NoAnalysis()
+        {
+            var test = @"
+public struct MyStructure
+{
+    public int Value;
+    public UnsupportedType UnsupportedField; // Should not be analyzed as OSStructure is not present
+}
+
+public struct UnsupportedType { }
+";
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+        }
+        // -------------------------------------------------------------------------
 
         // --------------- ParameterByReferenceRule (OS-ELG-MODL-05016) ------------
         [TestMethod]
@@ -899,6 +1060,29 @@ namespace Implementation
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
+
+        [TestMethod]
+        public async Task NameTooLong_DefaultInterfaceNameWithoutI_ReportsWarning()
+        {
+            var test = @"
+[OSInterface]
+public interface IThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed 
+{
+    void Method();
+}
+
+public class TestImplementation : IThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed 
+{
+    public void Method() { }
+}";
+            // Warning for interface name too long (after removing 'I' prefix) - spans interface declaration
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.NameMaxLengthExceeded)
+                .WithSpan(2, 1, 6, 2)
+                .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+        }
         // -------------------------------------------------------------------------
 
         // --------------- NameBeginsWithNumbersRule (OS-ELG-MODL-05020) -----------
@@ -1077,16 +1261,86 @@ namespace Second
         public float Value;
     }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.DuplicateName)
-                .WithSpan(14, 19, 14, 28)
-                .WithArguments("Structure, Structure", "Structure");
+            var expected = new[]
+            {
+                CSharpAnalyzerVerifier<Analyzer>
+                    .Diagnostic(DiagnosticIds.DuplicateName)
+                    .WithSpan(14, 19, 14, 28)
+                    .WithArguments("Structure, Structure", "Structure"),
+            };
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
-        // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05026 - TODO: implement
+        // --------------- UnsupportedDefaultValueRule (OS-ELG-MODL-05026) ---------
+        [TestMethod]
+        public async Task UnsupportedDefaultValueRule_ValidLiterals_NoWarning()
+        {
+            var test = @"
+[OSInterface]
+public interface ITestInterface 
+{
+    void TestMethod(string text = ""hello"",
+                    int number = 42,
+                    long bigNumber = 123L,
+                    double precise = 3.14,
+                    decimal money = 10.5m,
+                    bool flag = true,
+                    DateTime date = default,
+                    string nullString = null);
+}
+
+public class Implementation : ITestInterface 
+{
+    public void TestMethod(string text = ""hello"",
+                        int number = 42,
+                        long bigNumber = 123L,
+                        double precise = 3.14,
+                        decimal money = 10.5m,
+                        bool flag = true,
+                        DateTime date = default,
+                        string nullString = null) { }
+}";
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+        }
+
+        [TestMethod]
+        public async Task UnsupportedDefaultValueRule_UnsupportedExpressions_ReportsWarning()
+        {
+            var test = @"
+public class Constants 
+{
+    public const string DefaultText = ""invalid"";
+}
+
+[OSInterface]
+public interface ITestInterface 
+{
+    void TestMethod(string text1 = Constants.DefaultText,
+                    int number = 40 + 2);
+}
+
+public class Implementation : ITestInterface 
+{
+    public void TestMethod(string text1 = Constants.DefaultText,
+                        int number = 40 + 2) { }
+}";
+
+            var expected = new[] {
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.UnsupportedDefaultValue)
+            .WithSpan(10, 36, 10, 57)
+            .WithArguments("text1"),
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.UnsupportedDefaultValue)
+            .WithSpan(11, 34, 11, 40)
+            .WithArguments("number")
+    };
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+        }
+        // -------------------------------------------------------------------------
 
         // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05027 - not implementing
 
@@ -1094,6 +1348,199 @@ namespace Second
 
         // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05029 - not implementing
 
+        // ----------------------------------------------- MIXED TESTS!
+        [TestMethod]
+        public async Task ComplexScenario_MultipleNamingAndStructureIssues_ReportsWarnings()
+        {
+            var test = @"
+using System.Collections.Generic;
+
+namespace Company.ExternalLibs.Data
+{
+    [OSStructure]
+    public struct CustomStruct  // Changed to public to avoid compiler errors
+    {
+        internal int Value;  // Non-public field
+        [OSStructureField]
+        private string Name;  // Non-public field with OSStructureField
+
+        [OSStructureField(DataType = OSDataType.Text)]
+        public int InvalidMapping;  // Type mapping mismatch
+    }
+}
+
+namespace Company.ExternalLibs.Core
+{
+    using Company.ExternalLibs.Data;
+
+    [OSInterface(Name = ""123_Invalid*Name"")]  // Starts with number and has invalid char
+    public interface ITestInterface 
+    {
+        void _ProcessData(CustomStruct data);  // Method starts with _
+    }
+
+    public class Implementation : ITestInterface  // Missing public constructor
+    {
+        private readonly string _config;
+        
+        public Implementation(string config)  // Has constructor but with parameters
+        {
+            _config = config;
+        }
+
+        public void _ProcessData(CustomStruct data) { }
+    }
+}";
+
+            var expected = new[]
+            {
+        // NonPublicStructureField
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.NonPublicStructureField)
+            .WithSpan(11, 24, 11, 28)
+            .WithArguments("Name", "CustomStruct"),
+
+        // UnsupportedTypeMapping
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.UnsupportedTypeMapping)
+            .WithSpan(14, 20, 14, 34),
+
+        // NameBeginsWithNumbers
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.NameBeginsWithNumbers)
+            .WithSpan(22, 5, 26, 6)
+            .WithArguments("123_Invalid*Name"),
+
+        // UnsupportedCharactersInName
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.UnsupportedCharactersInName)
+            .WithSpan(22, 5, 26, 6)
+            .WithArguments("123_Invalid*Name", "*"),
+
+        // NameBeginsWithUnderscores (interface)
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
+            .WithSpan(25, 9, 25, 46)
+            .WithArguments("Method", "_ProcessData"),
+
+        // NonInstantiableInterface
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.NonInstantiableInterface)
+            .WithSpan(28, 18, 28, 32)
+            .WithArguments("Implementation"),
+
+        // NameBeginsWithUnderscores (implementation)
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
+            .WithSpan(37, 9, 37, 56)
+            .WithArguments("Method", "_ProcessData")
+    };
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+        }
+
+        [TestMethod]
+        public async Task ComplexScenario_MultipleStructureAndTypeIssues_ReportsWarnings()
+        {
+            var test = @"
+using System.Collections.Generic;
+
+namespace Company.ExternalLibs.Common
+{
+    [OSStructure]
+    public struct UnsupportedType { }  // Empty structure
+
+    [OSStructure]
+    public struct DuplicateStruct 
+    { 
+        public int Value; 
+    }
+}
+
+namespace Company.ExternalLibs.Models
+{
+    using Company.ExternalLibs.Common;
+
+    public struct InputStruct   // Missing OSStructure attribute
+    {
+        public int Value;
+    }
+
+    [OSStructure]
+    public struct ResultStruct
+    {
+        public UnsupportedType Result;  // Unsupported type
+        
+        [OSStructureField(DataType = OSDataType.Text)]
+        public int StringValue;  // Type mismatch with DataType
+        
+        public List<UnsupportedType> Items;  // List of unsupported type
+        public InputStruct NestedInput;  // Nested struct without OSStructure
+    }
+}
+
+namespace Company.ExternalLibs.Utils
+{
+    [OSStructure]
+    public struct DuplicateStruct 
+    { 
+        public string Name; 
+    }  // Duplicate structure name
+}
+
+namespace Company.ExternalLibs.Interfaces
+{
+    using Company.ExternalLibs.Models;
+
+    [OSInterface]
+    public interface IDataProcessor 
+    {
+        List<ResultStruct> ProcessData(InputStruct data);
+    }
+
+    public class DataProcessor : IDataProcessor
+    {
+        public DataProcessor() { }  // Added public parameterless constructor
+        
+        public List<ResultStruct> ProcessData(InputStruct data) 
+        {
+            return new List<ResultStruct>();
+        }
+    }
+}";
+            var expected = new[]
+            {
+        // Empty structure
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.EmptyStructure)
+            .WithSpan(7, 19, 7, 34)
+            .WithArguments("UnsupportedType"),
+
+        // UnsupportedTypeMapping
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.UnsupportedTypeMapping)
+            .WithSpan(31, 20, 31, 31),
+
+        // Unsupported parameter type (InputStruct)
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.UnsupportedParameterType)
+            .WithSpan(34, 28, 34, 39)
+            .WithArguments("ResultStruct", "Company.ExternalLibs.Models.InputStruct"),
+
+        // Duplicate structure name
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.DuplicateName)
+            .WithSpan(41, 19, 41, 34)
+            .WithArguments("DuplicateStruct, DuplicateStruct", "DuplicateStruct"),
+
+        // Missing OSStructure decoration
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.MissingStructureDecoration)
+            .WithSpan(54, 40, 54, 56)
+            .WithArguments("InputStruct", "data")
+    };
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+        }
 
         // ----------------------------------------------- OTHER TESTS!
 
@@ -1145,34 +1592,5 @@ namespace Root
             // This ensures the analyzer correctly traverses the namespace hierarchy.
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext);
         }
-
-
-
-
-
-        [TestMethod]
-        public async Task NameTooLong_DefaultInterfaceNameWithoutI_ReportsWarning()
-        {
-            var test = @"
-[OSInterface]
-public interface IThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed 
-{
-    void Method();
-}
-
-public class TestImplementation : IThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed 
-{
-    public void Method() { }
-}";
-            // Warning for interface name too long (after removing 'I' prefix) - spans interface declaration
-            var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.NameMaxLengthExceeded)
-                .WithSpan(2, 1, 6, 2)
-                .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
-
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
-        }
-
-
     }
 }
