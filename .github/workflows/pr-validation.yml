@@ -9,12 +9,25 @@ on:
 jobs:
   build-and-test:
     runs-on: windows-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     
     steps:
     - uses: actions/checkout@v4.2.2
+      with:
+        fetch-depth: 0
 
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
+
+    - name: Install .NET tools
+      run: |
+        dotnet tool install --global dotnet-sonarscanner
+        dotnet tool install --global dotnet-coverage
+        echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+      
+    - name: Begin SonarCloud analysis
+      run: dotnet sonarscanner begin /k:"jonathanalgar_CustomCode-Analyzer" /o:"jonathanalgar" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
 
     - name: Restore dependencies
       run: dotnet restore
@@ -23,8 +36,10 @@ jobs:
       run: |
         dotnet build src/CustomCode-Analyzer/CustomCode-Analyzer.csproj --configuration Release
         dotnet build tests/CustomCode-Analyzer.Tests/CustomCode-Analyzer.Tests.csproj --configuration Release
-        dotnet test tests/CustomCode-Analyzer.Tests/CustomCode-Analyzer.Tests.csproj --no-build --configuration Release --verbosity normal
+        dotnet-coverage collect "dotnet test tests/CustomCode-Analyzer.Tests/CustomCode-Analyzer.Tests.csproj --no-build --configuration Release --verbosity normal" -f xml -o "coverage.xml"
 
     - name: Build VSIX
       run: msbuild src\CustomCode-Analyzer.Vsix\CustomCode-Analyzer.Vsix.csproj /p:Configuration=Release /p:DeployExtension=false /p:ZipPackageCompressionLevel=Normal /m:4
 
+    - name: End SonarCloud analysis
+      run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
