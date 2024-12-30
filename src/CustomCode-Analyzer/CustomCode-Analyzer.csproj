@@ -8,8 +8,8 @@
 		<LangVersion>latest</LangVersion>
 		<RootNamespace>CustomCode_Analyzer</RootNamespace>
 		<PackageId>CustomCode.Analyzer</PackageId>
-		<Version>1.0.0</Version>
-		<Authors>YourName</Authors>
+		<Version>0.1.0</Version>
+		<Authors>Jonathan Algar</Authors>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 		<DevelopmentDependency>true</DevelopmentDependency>
@@ -22,7 +22,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- Pack the analyzer dll into the analyzers/dotnet/cs path in nuget package -->
 		<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 	</ItemGroup>
 </Project>

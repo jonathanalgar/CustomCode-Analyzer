@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
 	<Metadata>
-		<Identity Id="CustomCode_Analyzer.Vsix.e1c79fe3-d19f-4bf9-9c0c-57ba1f95b494" Version="1.0" Language="en-US" Publisher="YourName"/>
-		<DisplayName>CustomCode Analyzer</DisplayName>
-		<Description xml:space="preserve">Custom code analyzer extension.</Description>
+		<Identity Id="CustomCode_Analyzer.Vsix.e1c79fe3-d19f-4bf9-9c0c-57ba1f95b494" Version="0.1.0" Language="en-US" Publisher="Jonathan Algar"/>
+		<DisplayName>ODC CustomCode Analyzer</DisplayName>
+		<Description xml:space="preserve">Get feedback on your ODC custom code as you code.</Description>
+		<MoreInfo>https://github.com/yourorg/CustomCode-Analyzer</MoreInfo>
+		<License>Resources\LICENSE</License>
+		<Tags>static code analysis; c#; roslyn</Tags>
 	</Metadata>
 	<Installation>
 		<InstallationTarget Version="[17.0,)" Id="Microsoft.VisualStudio.Pro">
+			<ProductArchitecture>amd64</ProductArchitecture>
+		</InstallationTarget>
+		<InstallationTarget Version="[17.0,)" Id="Microsoft.VisualStudio.Enterprise">
 			<ProductArchitecture>amd64</ProductArchitecture>
 		</InstallationTarget>
 		<InstallationTarget Version="[17.0,)" Id="Microsoft.VisualStudio.Community">
@@ -21,7 +27,7 @@
 		<Asset Type="Microsoft.VisualStudio.Analyzer" d:Source="Project" d:ProjectName="CustomCode-Analyzer" Path="|CustomCode-Analyzer|"/>
 	</Assets>
 	<Prerequisites>
-		<Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.0,)" DisplayName="Visual Studio core editor" />
+		<Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.0,)" DisplayName="Visual Studio Core Editor" />
 		<Prerequisite Id="Microsoft.VisualStudio.Component.Roslyn.LanguageServices" Version="[17.0,)" DisplayName="Roslyn Language Services" />
 	</Prerequisites>
 </PackageManifest>
