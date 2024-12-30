@@ -1,0 +1,31 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4.2.2
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4.2.0
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: msbuild /p:Configuration=Release
+
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
