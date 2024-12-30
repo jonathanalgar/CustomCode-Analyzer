@@ -20,9 +20,12 @@ jobs:
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Install SonarCloud scanner
-      run: dotnet tool install --global dotnet-sonarscanner
-
+    - name: Install .NET tools
+      run: |
+        dotnet tool install --global dotnet-sonarscanner
+        dotnet tool install --global dotnet-coverage
+        echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+      
     - name: Begin SonarCloud analysis
       run: dotnet sonarscanner begin /k:"jonathanalgar_CustomCode-Analyzer" /o:"jonathanalgar" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
 
