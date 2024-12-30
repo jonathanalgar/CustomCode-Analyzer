@@ -13,11 +13,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4.2.2
     
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4.2.0
-      with:
-        dotnet-version: '8.0.x'
-
     - name: Cache NuGet packages
       uses: actions/cache@v3
       with:
@@ -32,8 +27,5 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Build
-      run: msbuild /p:Configuration=Release /p:DeployExtension=false /p:ZipPackageCompressionLevel=Normal /m:4
-
-    - name: Test
-      run: dotnet test --configuration Release --verbosity normal
+    - name: Build and test
+      run: msbuild /t:Rebuild,VSTest /p:Configuration=Release /p:DeployExtension=false /p:ZipPackageCompressionLevel=Normal /m:4
