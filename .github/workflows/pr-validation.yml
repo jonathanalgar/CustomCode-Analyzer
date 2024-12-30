@@ -1,0 +1,30 @@
+name: PR validation
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4.2.2
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build and test Analyzer
+      run: |
+        dotnet build src/CustomCode-Analyzer/CustomCode-Analyzer.csproj --configuration Release
+        dotnet build tests/CustomCode-Analyzer.Tests/CustomCode-Analyzer.Tests.csproj --configuration Release
+        dotnet test tests/CustomCode-Analyzer.Tests/CustomCode-Analyzer.Tests.csproj --no-build --configuration Release --verbosity normal
+
+    - name: Build VSIX
+      run: msbuild src\CustomCode-Analyzer.Vsix\CustomCode-Analyzer.Vsix.csproj /p:Configuration=Release /p:DeployExtension=false /p:ZipPackageCompressionLevel=Normal /m:4
+
