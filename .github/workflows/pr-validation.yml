@@ -12,14 +12,6 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4.2.2
-    
-    - name: Cache NuGet packages
-      uses: actions/cache@v3
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
 
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
@@ -27,8 +19,12 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Build
-      run: msbuild /p:Configuration=Release /p:DeployExtension=false /p:ZipPackageCompressionLevel=Normal /m:4
+    - name: Build and test Analyzer
+      run: |
+        dotnet build src/CustomCode-Analyzer/CustomCode-Analyzer.csproj --configuration Release
+        dotnet build tests/CustomCode-Analyzer.Tests/CustomCode-Analyzer.Tests.csproj --configuration Release
+        dotnet test tests/CustomCode-Analyzer.Tests/CustomCode-Analyzer.Tests.csproj --no-build --configuration Release --verbosity normal
 
-    - name: Test
-      run: dotnet test --configuration Release --verbosity normal
+    - name: Build VSIX
+      run: msbuild src\CustomCode-Analyzer.Vsix\CustomCode-Analyzer.Vsix.csproj /p:Configuration=Release /p:DeployExtension=false /p:ZipPackageCompressionLevel=Normal /m:4
+
