@@ -11,8 +11,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{2261A2C9
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CustomCode-Analyzer.Tests", "tests\CustomCode-Analyzer.Tests\CustomCode-Analyzer.Tests.csproj", "{68B1EB6C-7E60-4A4B-BEF0-B04A6A47AEE3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CustomCode-Analyzer.Runner", "src\CustomCode-Analyzer.Runner\CustomCode-Analyzer.Runner.csproj", "{3C351946-DF3F-4D64-8858-41D4E23177A9}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomCode-Analyzer.Vsix", "src\CustomCode-Analyzer.Vsix\CustomCode-Analyzer.Vsix.csproj", "{51A666D5-565B-439E-8DE7-A1462FB36179}"
 EndProject
 Global
@@ -29,10 +27,6 @@ Global
 		{68B1EB6C-7E60-4A4B-BEF0-B04A6A47AEE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{68B1EB6C-7E60-4A4B-BEF0-B04A6A47AEE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{68B1EB6C-7E60-4A4B-BEF0-B04A6A47AEE3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3C351946-DF3F-4D64-8858-41D4E23177A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3C351946-DF3F-4D64-8858-41D4E23177A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3C351946-DF3F-4D64-8858-41D4E23177A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3C351946-DF3F-4D64-8858-41D4E23177A9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{51A666D5-565B-439E-8DE7-A1462FB36179}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{51A666D5-565B-439E-8DE7-A1462FB36179}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{51A666D5-565B-439E-8DE7-A1462FB36179}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -44,7 +38,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{ECDF063D-7D3F-45CE-8D93-9E541DC8D8CB} = {20EACA7B-FD1E-4C6F-9317-EDA9AC41616C}
 		{68B1EB6C-7E60-4A4B-BEF0-B04A6A47AEE3} = {2261A2C9-82C0-47AE-937E-72A53DC9CCE2}
-		{3C351946-DF3F-4D64-8858-41D4E23177A9} = {20EACA7B-FD1E-4C6F-9317-EDA9AC41616C}
 		{51A666D5-565B-439E-8DE7-A1462FB36179} = {20EACA7B-FD1E-4C6F-9317-EDA9AC41616C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
