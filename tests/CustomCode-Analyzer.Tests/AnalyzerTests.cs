@@ -1,5 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using static Analyzer;
+using static CustomCode_Analyzer.Analyzer;
 
 namespace CustomCode_Analyzer.Tests
 {
@@ -18,10 +18,10 @@ public interface ITestInterface
     void TestMethod();
 }";
             // Warning for missing OSInterface attribute - spans the interface declaration
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoSingleInterface)
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.NoSingleInterface)
                 .WithSpan(2, 1, 5, 2);
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -36,10 +36,10 @@ namespace TestNamespace
     }
 }";
             // Warning for missing OSInterface attribute - spans the interface declaration
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoSingleInterface)
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.NoSingleInterface)
                 .WithSpan(4, 5, 7, 6);
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -70,11 +70,11 @@ public class SecondImplementation : ISecondInterface
     public void TestMethod() { }
 }";
             // Warning for multiple OSInterface attributes - spans the first interface's entire declaration
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("IFirstInterface, ISecondInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -107,10 +107,10 @@ namespace MyNamespace
     }
 }";
             // Warning for multiple OSInterface attributes - spans the first interface's declaration
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
                 .WithSpan(4, 5, 8, 6)
                 .WithArguments("IFirstInterface, ISecondInterface");
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -145,11 +145,11 @@ namespace Second
     }
 }";
             // Warning for multiple OSInterface attributes across namespaces - spans the first interface's declaration
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
                 .WithSpan(4, 5, 8, 6)
                 .WithArguments("IFirstInterface, ISecondInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -169,11 +169,11 @@ public class TestImplementation : ITestInterface
     public void TestMethod() { }
 }";
             // Warning for non-public interface with OSInterface - spans the entire interface declaration
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NonPublicInterface)
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.NonPublicInterface)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -194,11 +194,11 @@ namespace TestNamespace
     }
 }";
             // Warning for non-public interface with OSInterface in namespace - spans the interface declaration
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NonPublicInterface)
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.NonPublicInterface)
                 .WithSpan(4, 5, 8, 6)
                 .WithArguments("ITestInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -220,12 +220,12 @@ public class TestImplementation : ITestInterface
    }
    public void TestMethod() { }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.NonInstantiableInterface)
                 .WithSpan(8, 14, 8, 32)
                 .WithArguments("TestImplementation");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -248,12 +248,12 @@ namespace TestNamespace
        public void TestMethod() { }
    }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.NonInstantiableInterface)
                 .WithSpan(10, 17, 10, 35)
                 .WithArguments("TestImplementation");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -267,12 +267,12 @@ public interface ITestInterface
 {
     void TestMethod();
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.MissingImplementation)
                 .WithSpan(2, 1, 6, 2)  // Adjusted span
                 .WithArguments("ITestInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -287,12 +287,12 @@ namespace TestNamespace
         void TestMethod();
     }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.MissingImplementation)
                 .WithSpan(4, 5, 8, 6)  // Adjusted span
                 .WithArguments("ITestInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         // -------------------------------------------------------------------------
@@ -307,17 +307,17 @@ public interface ITestInterface
 {
 }";
             var expected = new[] {
-            CSharpAnalyzerVerifier<Analyzer>
+            CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.MissingImplementation)
                 .WithSpan(2, 1, 5, 2)
                 .WithArguments("ITestInterface"),
-            CSharpAnalyzerVerifier<Analyzer>
+            CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.EmptyInterface)
                 .WithSpan(3, 18, 3, 32)
                 .WithArguments("ITestInterface")
         };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -332,17 +332,17 @@ namespace TestNamespace
     }
 }";
             var expected = new[] {
-            CSharpAnalyzerVerifier<Analyzer>
+            CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.MissingImplementation)
                 .WithSpan(4, 5, 7, 6)
                 .WithArguments("ITestInterface"),
-            CSharpAnalyzerVerifier<Analyzer>
+            CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.EmptyInterface)
                 .WithSpan(5, 22, 5, 36)
                 .WithArguments("ITestInterface")
         };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -366,12 +366,12 @@ public class SecondImplementation : ITestInterface
 {
    public void TestMethod() { }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.ManyImplementation)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -396,12 +396,12 @@ namespace TestNamespace
        public void TestMethod() { }
    }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.ManyImplementation)
                 .WithSpan(4, 4, 8, 5)
                 .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -429,12 +429,12 @@ namespace Second
        public void TestMethod() { }
    }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.ManyImplementation)
                 .WithSpan(4, 4, 8, 5)
                 .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -450,12 +450,12 @@ internal struct TestStruct
 {
    public int Value;
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.NonPublicStruct)
                 .WithSpan(3, 17, 3, 27)
                 .WithArguments("TestStruct");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -470,12 +470,12 @@ namespace TestNamespace
        public int Value;
    }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.NonPublicStruct)
                 .WithSpan(5, 20, 5, 30)
                 .WithArguments("TestStruct");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -497,18 +497,18 @@ public struct TestStruct
 }";
             var expected = new[]
             {
-           CSharpAnalyzerVerifier<Analyzer>
+           CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                .Diagnostic(DiagnosticIds.NonPublicStructureField)
                .WithSpan(8, 16, 8, 21)
                .WithArguments("Value", "TestStruct"),
 
-           CSharpAnalyzerVerifier<Analyzer>
+           CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                .Diagnostic(DiagnosticIds.NonPublicStructureField)
                .WithSpan(11, 20, 11, 24)
                .WithArguments("Name", "TestStruct")
        };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -531,18 +531,18 @@ namespace TestNamespace
 }";
             var expected = new[]
             {
-           CSharpAnalyzerVerifier<Analyzer>
+           CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                .Diagnostic(DiagnosticIds.NonPublicStructureField)
                .WithSpan(10, 20, 10, 25)
                .WithArguments("Value", "TestStruct"),
 
-           CSharpAnalyzerVerifier<Analyzer>
+           CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                .Diagnostic(DiagnosticIds.NonPublicStructureField)
                .WithSpan(13, 24, 13, 28)
                .WithArguments("Name", "TestStruct")
        };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -565,18 +565,18 @@ public struct TestStruct
 
             var expected = new[]
             {
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicIgnored)
             .WithSpan(8, 17, 8, 29)
             .WithArguments("IgnoredValue", "TestStruct"),
 
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicIgnored)
             .WithSpan(11, 21, 11, 32)
             .WithArguments("IgnoredName", "TestStruct")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -600,18 +600,18 @@ namespace TestNamespace
 
             var expected = new[]
             {
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicIgnored)
             .WithSpan(10, 21, 10, 33)
             .WithArguments("IgnoredValue", "TestStruct"),
 
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicIgnored)
             .WithSpan(13, 25, 13, 36)
             .WithArguments("IgnoredName", "TestStruct")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -627,12 +627,12 @@ public struct TestStruct
     internal string InternalProperty { get; set; }
 }";
 
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.EmptyStructure)
                 .WithSpan(3, 15, 3, 25)
                 .WithArguments("TestStruct");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -649,12 +649,12 @@ namespace TestNamespace
     }
 }";
 
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.EmptyStructure)
                 .WithSpan(5, 19, 5, 29)
                 .WithArguments("TestStruct");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -675,11 +675,11 @@ public struct MyStructure
 
 public struct UnsupportedType { }
 ";
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.UnsupportedParameterType)
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.UnsupportedParameterType)
                 .WithSpan(6, 28, 6, 44)
                 .WithArguments("MyStructure", "UnsupportedType");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -695,11 +695,11 @@ public struct MyStructure
 
 public struct UnsupportedType { }
 ";
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.UnsupportedParameterType)
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.UnsupportedParameterType)
                 .WithSpan(6, 5, 6, 61)
                 .WithArguments("MyStructure", "UnsupportedType");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -716,7 +716,7 @@ public struct MyStructure
     public List<int> SupportedList;
 }
 ";
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
         }
 
         [TestMethod]
@@ -735,7 +735,7 @@ public struct MyStructure
     public NestedStructure SupportedNested;
 }
 ";
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
         }
 
         [TestMethod]
@@ -751,7 +751,7 @@ public struct MyStructure
     public IEnumerable<int> SupportedEnumerable;
 }
 ";
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
         }
 
         [TestMethod]
@@ -768,11 +768,11 @@ public struct MyStructure
 
 public struct UnsupportedType { }
     ";
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.UnsupportedParameterType)
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.UnsupportedParameterType)
                 .WithSpan(7, 34, 7, 49)
                 .WithArguments("MyStructure", "System.Collections.Generic.List<UnsupportedType>");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -788,7 +788,7 @@ public struct MyStructure
 
 public struct UnsupportedType { }
 ";
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
         }
 
         [TestMethod]
@@ -804,7 +804,7 @@ public struct MyStructure
 
 public struct UnsupportedType { }
 ";
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
         }
 
         [TestMethod]
@@ -819,7 +819,7 @@ public struct MyStructure
 
 public struct UnsupportedType { }
 ";
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
         }
         // -------------------------------------------------------------------------
 
@@ -845,23 +845,23 @@ public class TestImplementation : ITestInterface
 
             var expected = new[]
             {
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.ParameterByReference)
             .WithSpan(5, 22, 5, 35)
             .WithArguments("value", "UpdateValue"),
 
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.ParameterByReference)
             .WithSpan(6, 19, 6, 34)
             .WithArguments("text", "GetValue"),
 
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.ParameterByReference)
             .WithSpan(7, 20, 7, 36)
             .WithArguments("number", "ReadValue")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -891,23 +891,23 @@ namespace Implementation
 
             var expected = new[]
             {
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.ParameterByReference)
             .WithSpan(7, 26, 7, 39)
             .WithArguments("value", "UpdateValue"),
 
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.ParameterByReference)
             .WithSpan(8, 23, 8, 38)
             .WithArguments("text", "GetValue"),
 
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.ParameterByReference)
             .WithSpan(9, 24, 9, 40)
             .WithArguments("number", "ReadValue")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -940,17 +940,17 @@ public struct TestStruct
             var expected = new[]
             {
         // Warning for private field with OSStructureField - spans the field name
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.UnsupportedTypeMapping)
             .WithSpan(6, 16, 6, 21),
 
         // Warning for internal property with OSStructureField - spans the property name
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.UnsupportedTypeMapping)
             .WithSpan(9, 19, 9, 23)
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -970,12 +970,12 @@ internal class TestImplementation : ITestInterface
     public void TestMethod() { }
 }";
 
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.MissingPublicImplementation)
                 .WithSpan(8, 16, 8, 34)
                 .WithArguments("ITestInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -999,12 +999,12 @@ namespace Implementation
     }
 }";
 
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.MissingPublicImplementation)
                 .WithSpan(13, 20, 13, 38)
                 .WithArguments("ITestInterface");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -1024,12 +1024,12 @@ public class TestImplementation : ITestInterface
     public void Method() { }
 }";
 
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.NameMaxLengthExceeded)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -1053,12 +1053,12 @@ namespace Implementation
     }
 }";
 
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.NameMaxLengthExceeded)
                 .WithSpan(4, 5, 8, 6)
                 .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -1076,12 +1076,12 @@ public class TestImplementation : IThisExternalLibraryNameIsMuchTooLongAndExceed
     public void Method() { }
 }";
             // Warning for interface name too long (after removing 'I' prefix) - spans interface declaration
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.NameMaxLengthExceeded)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -1101,12 +1101,12 @@ public class TestImplementation : ITestInterface
     public void Method() { }
 }";
             // Warning for name starting with number - spans the interface declaration
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.NameBeginsWithNumbers)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("123Service");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -1127,12 +1127,12 @@ public class TestImplementation : ITestInterface
     public void Method() { }
 }";
             // Warning for invalid characters in name - spans the interface declaration
-            var expected = CSharpAnalyzerVerifier<Analyzer>
+            var expected = CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                 .Diagnostic(DiagnosticIds.UnsupportedCharactersInName)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("Invalid*Name@123", "*, @");
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -1154,16 +1154,16 @@ public class TestImplementation : ITestInterface
 
             var expected = new[]
             {
-        CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
             .WithSpan(5, 5, 5, 24)
             .WithArguments("Method", "_TestMethod"),
 
-        CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
             .WithSpan(10, 5, 10, 34)
             .WithArguments("Method", "_TestMethod")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -1188,16 +1188,16 @@ namespace Implementation
 }";
             var expected = new[]
             {
-        CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
             .WithSpan(7, 9, 7, 28)
             .WithArguments("Method", "_TestMethod"),
 
-        CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
             .WithSpan(15, 9, 15, 38)
             .WithArguments("Method", "_TestMethod")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -1228,14 +1228,14 @@ public struct MyStruct { }
 ";
             var expected = new[]
             {
-                CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.MissingStructureDecoration)
+                CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.MissingStructureDecoration)
                     .WithSpan(7, 13, 7, 23).WithArguments("MyStruct", "a"),
 
-                CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.MissingStructureDecoration)
+                CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.Diagnostic(DiagnosticIds.MissingStructureDecoration)
                     .WithSpan(7, 25, 7, 41).WithArguments("MyStruct", "b")
             };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -1263,13 +1263,13 @@ namespace Second
 }";
             var expected = new[]
             {
-                CSharpAnalyzerVerifier<Analyzer>
+                CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
                     .Diagnostic(DiagnosticIds.DuplicateName)
                     .WithSpan(14, 19, 14, 28)
                     .WithArguments("Structure, Structure", "Structure"),
             };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -1302,7 +1302,7 @@ public class Implementation : ITestInterface
                         DateTime date = default,
                         string nullString = null) { }
 }";
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
         }
 
         [TestMethod]
@@ -1328,17 +1328,17 @@ public class Implementation : ITestInterface
 }";
 
             var expected = new[] {
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.UnsupportedDefaultValue)
             .WithSpan(10, 36, 10, 57)
             .WithArguments("text1"),
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.UnsupportedDefaultValue)
             .WithSpan(11, 34, 11, 40)
             .WithArguments("number")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
         // -------------------------------------------------------------------------
 
@@ -1395,48 +1395,48 @@ namespace Company.ExternalLibs.Core
             var expected = new[]
             {
         // NonPublicStructureField
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.NonPublicStructureField)
             .WithSpan(11, 24, 11, 28)
             .WithArguments("Name", "CustomStruct"),
 
         // UnsupportedTypeMapping
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.UnsupportedTypeMapping)
             .WithSpan(14, 20, 14, 34),
 
         // NameBeginsWithNumbers
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.NameBeginsWithNumbers)
             .WithSpan(22, 5, 26, 6)
             .WithArguments("123_Invalid*Name"),
 
         // UnsupportedCharactersInName
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.UnsupportedCharactersInName)
             .WithSpan(22, 5, 26, 6)
             .WithArguments("123_Invalid*Name", "*"),
 
         // NameBeginsWithUnderscores (interface)
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
             .WithSpan(25, 9, 25, 46)
             .WithArguments("Method", "_ProcessData"),
 
         // NonInstantiableInterface
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.NonInstantiableInterface)
             .WithSpan(28, 18, 28, 32)
             .WithArguments("Implementation"),
 
         // NameBeginsWithUnderscores (implementation)
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
             .WithSpan(37, 9, 37, 56)
             .WithArguments("Method", "_ProcessData")
     };
 
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         [TestMethod]
@@ -1511,35 +1511,35 @@ namespace Company.ExternalLibs.Interfaces
             var expected = new[]
             {
         // Empty structure
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.EmptyStructure)
             .WithSpan(7, 19, 7, 34)
             .WithArguments("UnsupportedType"),
 
         // UnsupportedTypeMapping
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.UnsupportedTypeMapping)
             .WithSpan(31, 20, 31, 31),
 
         // Unsupported parameter type (InputStruct)
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.UnsupportedParameterType)
             .WithSpan(34, 28, 34, 39)
             .WithArguments("ResultStruct", "Company.ExternalLibs.Models.InputStruct"),
 
         // Duplicate structure name
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.DuplicateName)
             .WithSpan(41, 19, 41, 34)
             .WithArguments("DuplicateStruct, DuplicateStruct", "DuplicateStruct"),
 
         // Missing OSStructure decoration
-        CSharpAnalyzerVerifier<Analyzer>
+        CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>
             .Diagnostic(DiagnosticIds.MissingStructureDecoration)
             .WithSpan(54, 40, 54, 56)
             .WithArguments("InputStruct", "data")
     };
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
         // ----------------------------------------------- OTHER TESTS!
@@ -1561,7 +1561,7 @@ namespace Company.ExternalLibs.Interfaces
         }
     }
 ";
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: true);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: true);
         }
 
 
@@ -1590,7 +1590,7 @@ namespace Root
 }";
             // Verifies that implementing class can be in a deeper namespace than the interface.
             // This ensures the analyzer correctly traverses the namespace hierarchy.
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext);
+            await CSharpAnalyzerVerifier<CustomCode_Analyzer.Analyzer>.VerifyAnalyzerAsync(test, TestContext);
         }
     }
 }
