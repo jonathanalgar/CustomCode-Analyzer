@@ -7,7 +7,7 @@
         "description": "Get feedback on your OutSytems Developer Cloud (ODC) custom C# code as you code."
     },
     "overview": "README.md",
-    "publisher": "Jonathan Algar",
+    "publisher": "JonathanAlgar",
     "qna": true,
     "repo": "https://github.com/jonathanalgar/CustomCode-Analyzer"
 }
