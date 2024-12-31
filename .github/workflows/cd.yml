@@ -9,7 +9,7 @@ on:
 
 jobs:
   publish:
-    if: github.event.workflow_run.conclusion == 'success'
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: windows-latest
     env:
       VS_MARKETPLACE_TOKEN: ${{ secrets.VS_MARKETPLACE_TOKEN }}
