@@ -32,12 +32,12 @@ jobs:
     - name: Publish VSIX to marketplace
       uses: cezarypiatek/VsixPublisherAction@1.1
       with:
-        extension-file: artifacts/CustomCode_Analyzer.vsix
+        extension-file: artifacts/CustomCode-Analyzer.Vsix/bin/Release/CustomCode_Analyzer.vsix
         publish-manifest-file: marketplace-publish.json
         personal-access-code: ${{ secrets.VS_MARKETPLACE_TOKEN }}
 
     - name: Publish NuGet package
-      run: dotnet nuget push "artifacts/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+      run: dotnet nuget push "artifacts/CustomCode-Analyzer/bin/Release/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
 
     - name: Get Version
       id: version
@@ -51,8 +51,8 @@ jobs:
       uses: softprops/action-gh-release@v2.2.0
       with:
         files: |
-          artifacts/CustomCode_Analyzer.vsix
-          artifacts/*.nupkg
+          artifacts/CustomCode-Analyzer.Vsix/bin/Release/CustomCode_Analyzer.vsix
+          artifacts/CustomCode-Analyzer/bin/Release/*.nupkg
         tag_name: v${{ steps.version.outputs.VERSION }}
         name: Release v${{ steps.version.outputs.VERSION }}
         draft: true
