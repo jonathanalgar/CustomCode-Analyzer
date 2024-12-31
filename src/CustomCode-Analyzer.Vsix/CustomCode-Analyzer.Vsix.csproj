@@ -60,11 +60,18 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Content Include="Resources\LICENSE">
+		<Content Include="..\..\LICENSE">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 			<IncludeInVSIX>true</IncludeInVSIX>
+			<Link>Resources\LICENSE</Link>
+		</Content>
+		<Content Include="..\..\README.md">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<IncludeInVSIX>true</IncludeInVSIX>
+			<Link>README.md</Link>
 		</Content>
 	</ItemGroup>
+
 
 	<ItemGroup>
 		<None Include="source.extension.vsixmanifest">
