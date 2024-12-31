@@ -1,0 +1,59 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+    branches: [ main ]
+
+jobs:
+  publish:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: windows-latest
+    env:
+      VS_MARKETPLACE_TOKEN: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4.2.2
+
+    - name: Download build artifacts
+      uses: dawidd6/action-download-artifact@v3
+      with:
+        workflow: ci.yml
+        run_id: ${{ github.event.workflow_run.id }}
+        name: build-artifacts
+        path: artifacts
+
+    - name: Publish VSIX to marketplace
+      run: |
+        $vsixPublisher = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VSSDK\VisualStudioIntegration\Tools\VsixPublisher\VsixPublisher.exe"
+        & $vsixPublisher publish -payload "artifacts/CustomCode_Analyzer.vsix" -publishManifest "marketplace-publish.json" -personalAccessToken ${{ secrets.VS_MARKETPLACE_TOKEN }}
+      shell: pwsh
+
+
+    - name: Publish NuGet package
+      run: dotnet nuget push "artifacts/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+
+    - name: Get Version
+      id: version
+      run: |
+        $xml = [xml](Get-Content src/CustomCode-Analyzer/CustomCode-Analyzer.csproj)
+        $version = $xml.Project.PropertyGroup.Version
+        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+      shell: pwsh
+
+    - name: Create release
+      uses: softprops/action-gh-release@v2.2.0
+      with:
+        files: |
+          artifacts/CustomCode_Analyzer.vsix
+          artifacts/*.nupkg
+        tag_name: v${{ steps.version.outputs.VERSION }}
+        name: Release v${{ steps.version.outputs.VERSION }}
+        draft: true
+        prerelease: false
+        generate_release_notes: true

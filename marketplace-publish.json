@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json.schemastore.org/vsix-publish",
+    "categories": [ "Coding" ],
+    "identity": {
+        "internalName": "CustomCodeAnalyzer",
+        "displayName": "OutSystems Developer Cloud (ODC) Custom Code Analyzer",
+        "description": "Get feedback on your OutSytems Developer Cloud (ODC) custom C# code as you code."
+    },
+    "overview": "README.md",
+    "publisher": "Jonathan Algar",
+    "qna": true,
+    "repo": "https://github.com/jonathanalgar/CustomCode-Analyzer"
+}
