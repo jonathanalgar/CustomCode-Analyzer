@@ -37,8 +37,14 @@ jobs:
         personal-access-code: ${{ secrets.VS_MARKETPLACE_TOKEN }}
 
     - name: Publish NuGet package
-      run: dotnet nuget push "artifacts/CustomCode-Analyzer/bin/Release/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
-
+      run: |
+        $packageFiles = Get-ChildItem -Path "artifacts/CustomCode-Analyzer/bin/Release/" -Filter "*.nupkg" -Recurse
+        foreach ($pkg in $packageFiles) {
+          Write-Output "Pushing package: $($pkg.FullName)"
+          dotnet nuget push $pkg.FullName --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json
+        }
+      shell: pwsh
+      
     - name: Get Version
       id: version
       run: |
