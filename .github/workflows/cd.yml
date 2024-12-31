@@ -35,6 +35,7 @@ jobs:
         extension-file: artifacts/CustomCode-Analyzer.Vsix/bin/Release/CustomCode_Analyzer.vsix
         publish-manifest-file: marketplace-publish.json
         personal-access-code: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+      continue-on-error: true
 
     - name: Publish NuGet package
       run: |
@@ -44,6 +45,7 @@ jobs:
           dotnet nuget push $pkg.FullName --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json
         }
       shell: pwsh
+      continue-on-error: true
       
     - name: Get Version
       id: version
