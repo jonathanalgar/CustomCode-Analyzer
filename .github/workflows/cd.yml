@@ -30,10 +30,11 @@ jobs:
         path: artifacts
 
     - name: Publish VSIX to marketplace
-      run: |
-        $vsixPublisher = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VSSDK\VisualStudioIntegration\Tools\VsixPublisher\VsixPublisher.exe"
-        & $vsixPublisher publish -payload "artifacts/CustomCode_Analyzer.vsix" -publishManifest "marketplace-publish.json" -personalAccessToken ${{ secrets.VS_MARKETPLACE_TOKEN }}
-      shell: pwsh
+      uses: cezarypiatek/VsixPublisherAction@1.1
+      with:
+        extension-file: artifacts/CustomCode_Analyzer.vsix
+        publish-manifest-file: marketplace-publish.json
+        personal-access-code: ${{ secrets.VS_MARKETPLACE_TOKEN }}
 
     - name: Publish NuGet package
       run: dotnet nuget push "artifacts/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
