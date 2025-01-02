@@ -30,7 +30,7 @@ If your project references the External Libraries SDK (`OutSystems.ExternalLibra
 
 ### Others
 
-Add the NuGet package as a dev dependency to your ODC external libraries project:
+Add the [NuGet package](https://www.nuget.org/packages/CustomCode.Analyzer/) as a dev dependency to your ODC external libraries project:
 
 ```dotnet add package CustomCode.Analyzer```
 
