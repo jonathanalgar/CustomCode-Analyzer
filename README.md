@@ -44,7 +44,7 @@ If your project references the External Libraries SDK (`OutSystems.ExternalLibra
 
 - [ ] Marketplace extensions for Visual Studio Code and Rider.
 - [ ] Beyond the rules: info-level guidance for [best practices](https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#best-practices) (statelessness checks, guidance on large binary files).
-- [ ] Explore viability of implementing [OS-ELG-MODL-05009](.https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05009).
+- [ ] Explore viability of implementing [OS-ELG-MODL-05009](https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05009).
 - [ ] Explore [`CodeFixProvider`](https://learn.microsoft.com/en-us/dotnet/api/microsoft.codeanalysis.codefixes.codefixprovider?view=roslyn-dotnet-4.9.0) for auto-fixable rules.
 
 ## Contributing
