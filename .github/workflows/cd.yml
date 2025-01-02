@@ -47,7 +47,7 @@ jobs:
       shell: pwsh
       continue-on-error: true
       
-    - name: Get Version
+    - name: Get version
       id: version
       run: |
         $xml = [xml](Get-Content src/CustomCode-Analyzer/CustomCode-Analyzer.csproj)
@@ -55,7 +55,22 @@ jobs:
         echo "VERSION=$version" >> $env:GITHUB_OUTPUT
       shell: pwsh
 
+    - name: Check if release exists
+      id: check_release
+      run: |
+        $tag = "v${{ steps.version.outputs.VERSION }}"
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases/tags/$tag" -ErrorAction SilentlyContinue
+        if ($release) {
+          echo "EXISTS=true" >> $env:GITHUB_OUTPUT
+          Write-Host "Release $tag already exists"
+        } else {
+          echo "EXISTS=false" >> $env:GITHUB_OUTPUT
+          Write-Host "Release $tag does not exist"
+        }
+      shell: pwsh
+
     - name: Create release
+      if: steps.check_release.outputs.EXISTS == 'false'
       uses: softprops/action-gh-release@v2
       with:
         files: |
