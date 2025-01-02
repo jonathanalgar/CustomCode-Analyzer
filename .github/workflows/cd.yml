@@ -57,9 +57,11 @@ jobs:
 
     - name: Check if release exists
       id: check_release
-      uses: octokit/request-action@v2.x
+      uses: octokit/request-action@v2.4.0
       with:
         route: GET /repos/{owner}/{repo}/releases/tags/v${{ steps.version.outputs.VERSION }}
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
       continue-on-error: true
 
     - name: Create release
