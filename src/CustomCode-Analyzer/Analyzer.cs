@@ -471,7 +471,8 @@ namespace CustomCode_Analyzer
                                             context.ReportDiagnostic(
                                                 Diagnostic.Create(
                                                     UnsupportedTypeMappingRule,
-                                                    GetMemberLocation()));
+                                                    GetMemberLocation(),
+                                                    member.Name));
                                         }
                                     }
                                 }
