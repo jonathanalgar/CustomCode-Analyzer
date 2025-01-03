@@ -923,7 +923,7 @@ namespace CustomCode_Analyzer
         /// <summary>
         /// Validates parameter default values for UnsupportedDefaultValueRule
         /// </summary>
-        private bool IsValidParameterDefaultValue(IParameterSymbol parameter)
+        private static bool IsValidParameterDefaultValue(IParameterSymbol parameter)
         {
             // If no explicit default value is specified, it's considered valid
             if (!parameter.HasExplicitDefaultValue)
@@ -963,7 +963,7 @@ namespace CustomCode_Analyzer
         /// <summary>
         /// Validates type support for UnsupportedParameterTypeRule
         /// </summary>
-        private bool IsValidParameterType(ITypeSymbol typeSymbol, Compilation compilation)
+        private static bool IsValidParameterType(ITypeSymbol typeSymbol, Compilation compilation)
         {
             if (typeSymbol == null)
             {
