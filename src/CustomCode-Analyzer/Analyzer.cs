@@ -640,7 +640,7 @@ namespace CustomCode_Analyzer
         /// <summary>
         /// Analyzes method declarations.
         /// <summary>
-        private void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol)
+        private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol)
         {
             var syntaxRef = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault();
             if (syntaxRef == null) return;
@@ -788,7 +788,7 @@ namespace CustomCode_Analyzer
         /// - That each declared [OSStructure] name is unique across the compilation.
         /// - Checks if the single [OSInterface] had an implementing class or not, etc.
         /// </summary>
-        private void AnalyzeCompilationEnd(
+        private static void AnalyzeCompilationEnd(
             CompilationAnalysisContext context,
             ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)> osInterfaces)
         {
