@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
-
 namespace CustomCode_Analyzer
 {
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -15,7 +14,7 @@ namespace CustomCode_Analyzer
     {
         /// <summary>
         /// Contains all diagnostic IDs used by this analyzer.
-        /// These IDs are used to uniquely identify each type of diagnostic that can be reported.
+        /// These IDs uniquely identify each type of diagnostic that can be reported.
         /// </summary>
         public static class DiagnosticIds
         {
@@ -53,13 +52,11 @@ namespace CustomCode_Analyzer
             public const string Design = "Design";   // Issues related to code structure and design
             public const string Naming = "Naming";   // Issues related to naming conventions
         }
-
-        // Define diagnostic descriptors for each rule
-        // Each descriptor includes:
-        // - A unique ID
-        // - A title and message format
-        // - The category and severity
-        // - Whether it's enabled by default
+        // Below are DiagnosticDescriptors that describe each rule:
+        // - Unique ID
+        // - Title and message
+        // - Category and default severity
+        // - Whether the diagnostic is enabled by default
         // - Optional help link and custom tags
 
         // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05001 - not implementing
@@ -295,6 +292,9 @@ namespace CustomCode_Analyzer
 
         // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05029 - not implementing
 
+        /// <summary>
+        /// Returns the full set of DiagnosticDescriptors that this analyzer is capable of producing.
+        /// </summary>
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
             ImmutableArray.Create(
                 NonPublicInterfaceRule,
@@ -321,592 +321,606 @@ namespace CustomCode_Analyzer
                 UnsupportedDefaultValueRule);
 
         /// <summary>
-        /// Initializes the analyzer by registering all necessary analysis actions.
-        /// This method is called once at the start of the analysis.
+        /// Entry point for the analyzer. Initializes analysis by setting up compilation-level
+        /// actions.
         /// </summary>
-        /// <param name="context">The context for initialization</param>
         public override void Initialize(AnalysisContext context)
         {
-            // Disable analysis for generated code to improve performance
+            // Disable analysis for generated code for better performance
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
             // Enable concurrent analysis for better performance
             context.EnableConcurrentExecution();
 
             // Register a compilation start action to set up context-specific analysis
-            context.RegisterCompilationStartAction(compilationContext =>
+            context.RegisterCompilationStartAction(InitializeCompilationAnalysis);
+        }
+
+        /// <summary>
+        /// Called once per compilation to initialize per-compilation data structures and 
+        /// register further symbol and compilation end actions.
+        /// </summary>
+        private void InitializeCompilationAnalysis(CompilationStartAnalysisContext compilationContext)
+        {
+            // Check if the OutSystems.ExternalLibraries.SDK package is referenced
+            // If not, skip all checks
+            bool isPackageReferenced = compilationContext.Compilation.ReferencedAssemblyNames
+                .Any(r => r.Name.Equals("OutSystems.ExternalLibraries.SDK", StringComparison.OrdinalIgnoreCase));
+
+            if (!isPackageReferenced)
+                return;
+
+            // A thread-safe collection to track all OSInterface-decorated interfaces in the compilation
+            var osInterfaces = new ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)>();
+
+            // Register symbol actions for struct, interface, and class analysis
+            compilationContext.RegisterSymbolAction(context =>
             {
-                // Check if the OutSystems.ExternalLibraries.SDK package is referenced
-                bool isPackageReferenced = compilationContext.Compilation.ReferencedAssemblyNames
-                    .Any(reference => reference.Name.Equals("OutSystems.ExternalLibraries.SDK", StringComparison.OrdinalIgnoreCase));
-
-                if (!isPackageReferenced) { return; }
-
-                // Create thread-safe collections to track interfaces across the compilation
-                var osInterfaces = new ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)>();
-
-                // Helper method to retrieve all types in the compilation that match a predicate
-                IEnumerable<INamedTypeSymbol> GetAllTypesInCompilation(Compilation compilation, Func<INamedTypeSymbol, bool> predicate)
+                if (context.Symbol is INamedTypeSymbol typeSymbol)
                 {
-                    var stack = new Stack<INamespaceSymbol>();
-                    stack.Push(compilation.GlobalNamespace);
-
-                    // Use a stack to perform depth-first traversal of namespaces
-                    while (stack.Count > 0)
+                    switch (typeSymbol.TypeKind)
                     {
-                        var current = stack.Pop();
+                        case TypeKind.Struct:
+                            AnalyzeStruct(context, typeSymbol);
+                            break;
+                        case TypeKind.Interface:
+                            AnalyzeInterface(context, typeSymbol, osInterfaces);
+                            break;
+                        case TypeKind.Class:
+                            AnalyzeClass(context, typeSymbol);
+                            break;
+                    }
+                }
+            }, SymbolKind.NamedType);
 
-                        // Get types in the current namespace that match the predicate
-                        foreach (var type in current.GetTypeMembers().Where(predicate))
-                        {
-                            yield return type;
-                        }
+            // Register a symbol action for method-level analysis
+            compilationContext.RegisterSymbolAction(context =>
+            {
+                if (context.Symbol is IMethodSymbol methodSymbol)
+                {
+                    AnalyzeMethod(context, methodSymbol);
+                }
+            }, SymbolKind.Method);
 
-                        // Add nested namespaces to the stack for further traversal
-                        foreach (var nested in current.GetNamespaceMembers())
+            // Register a compilation end action to check for any final conditions
+            // that can only be verified after all symbols have been processed (for example, # of OSInterfaces).
+            compilationContext.RegisterCompilationEndAction(ctx =>
+            {
+                AnalyzeCompilationEnd(ctx, osInterfaces);
+            });
+        }
+
+        /// <summary>
+        /// Analyzes struct declarations.
+        /// </summary>
+        private void AnalyzeStruct(SymbolAnalysisContext context, INamedTypeSymbol typeSymbol)
+        {
+            // Check if the struct has the OSStructure attribute
+            bool hasOSStructureAttribute = typeSymbol.GetAttributes()
+                .Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure");
+
+            if (!hasOSStructureAttribute) return;
+
+            // Retrieve the actual syntax node for reporting precise locations
+            if (typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not StructDeclarationSyntax structDecl)
+                return;
+
+            // Verify struct is declared as public
+            if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        NonPublicStructRule,
+                        structDecl.Identifier.GetLocation(),
+                        typeSymbol.Name));
+            }
+
+            // Check that the struct has at least one public field or property
+            bool hasPublicMembers = typeSymbol.GetMembers()
+                .Any(m => (m is IFieldSymbol || m is IPropertySymbol) &&
+                          m.DeclaredAccessibility == Accessibility.Public);
+
+            if (!hasPublicMembers)
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        EmptyStructureRule,
+                        structDecl.Identifier.GetLocation(),
+                        typeSymbol.Name));
+            }
+
+            // Analyze each member in the struct
+            foreach (var member in typeSymbol.GetMembers())
+            {
+                // Helper function to get the source location for error reporting
+                Location GetMemberLocation()
+                {
+                    if (member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not SyntaxNode syntax)
+                        return Location.None;
+
+                    return (member, syntax) switch
+                    {
+                        (IFieldSymbol, VariableDeclaratorSyntax vds) => vds.Identifier.GetLocation(),
+                        (IPropertySymbol, PropertyDeclarationSyntax pds) => pds.Identifier.GetLocation(),
+                        _ => Location.None
+                    };
+                }
+
+                // Check if the member has the OSStructureField attribute
+                var hasOSStructureField = member.GetAttributes()
+                    .Any(a => a.AttributeClass?.Name is "OSStructureFieldAttribute" or "OSStructureField");
+
+                // If the member is decorated with OSStructureField but not public, report a diagnostic
+                if (hasOSStructureField && !member.DeclaredAccessibility.HasFlag(Accessibility.Public))
+                {
+                    var loc = GetMemberLocation();
+                    if (loc != Location.None)
+                    {
+                        context.ReportDiagnostic(
+                            Diagnostic.Create(
+                                NonPublicStructureFieldRule,
+                                loc,
+                                member.Name,
+                                typeSymbol.Name));
+                    }
+                }
+
+                // If the member has [OSStructureField] and a "DataType" named argument, 
+                // check for incompatible type mappings between .NET type and OutSystems type
+                if (hasOSStructureField)
+                {
+                    var osStructureField = member.GetAttributes()
+                        .First(a => a.AttributeClass?.Name is "OSStructureField" or "OSStructureFieldAttribute");
+
+                    // Check if the DataType named argument is specified
+                    if (osStructureField.NamedArguments.Any(na => na.Key == "DataType"))
+                    {
+                        var dataType = osStructureField.NamedArguments.First(na => na.Key == "DataType").Value;
+
+                        ITypeSymbol realType = member switch
                         {
-                            stack.Push(nested);
+                            IFieldSymbol f => f.Type,
+                            IPropertySymbol p => p.Type,
+                            _ => null
+                        };
+                        if (realType != null && HasIncompatibleDataTypeMapping(realType, dataType))
+                        {
+                            context.ReportDiagnostic(
+                                Diagnostic.Create(
+                                    UnsupportedTypeMappingRule,
+                                    GetMemberLocation(),
+                                    member.Name));
                         }
                     }
                 }
 
-                // Register handler for struct analysis
-                compilationContext.RegisterSymbolAction(context =>
+                // Check if the member has the OSIgnore attribute
+                var hasOSIgnore = member.GetAttributes()
+                    .Any(a => a.AttributeClass?.Name is "OSIgnoreAttribute" or "OSIgnore");
+
+                // If the member is decorated with OSIgnore but not public, report a diagnostic
+                if (hasOSIgnore && !member.DeclaredAccessibility.HasFlag(Accessibility.Public))
                 {
-                    if (context.Symbol is INamedTypeSymbol typeSymbol &&
-                        typeSymbol.TypeKind == TypeKind.Struct)
+                    var loc = GetMemberLocation();
+                    if (loc != Location.None)
                     {
-                        // Check if the struct has the OSStructure attribute
-                        var hasOSStructureAttribute = typeSymbol.GetAttributes()
-                            .Any(attr => attr.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure");
-
-                        if (hasOSStructureAttribute)
-                        {
-                            // Retrieve the syntax node for the struct declaration
-                            if (typeSymbol.DeclaringSyntaxReferences
-                                .FirstOrDefault()?.GetSyntax() is not StructDeclarationSyntax structDeclaration)
-                            {
-                                return;
-                            }
-
-                            // Verify struct is declared as public
-                            if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
-                            {
-                                // Report diagnostic if struct is not public
-                                context.ReportDiagnostic(
-                                    Diagnostic.Create(
-                                        NonPublicStructRule,
-                                        structDeclaration.Identifier.GetLocation(),
-                                        typeSymbol.Name));
-                            }
-
-                            // Check that struct has at least one public member (field or property)
-                            var hasPublicMembers = typeSymbol.GetMembers()
-                                .Any(member =>
-                                    (member is IFieldSymbol || member is IPropertySymbol) &&
-                                    member.DeclaredAccessibility == Accessibility.Public);
-
-                            if (!hasPublicMembers)
-                            {
-                                // Report diagnostic if no public members are found
-                                context.ReportDiagnostic(
-                                    Diagnostic.Create(
-                                        EmptyStructureRule,
-                                        structDeclaration.Identifier.GetLocation(),
-                                        typeSymbol.Name));
-                            }
-
-                            // Analyze each member of the struct
-                            foreach (var member in typeSymbol.GetMembers())
-                            {
-                                // Helper function to get the source location for error reporting
-                                Location GetMemberLocation()
-                                {
-                                    if (member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is not SyntaxNode syntax)
-                                        return Location.None;
-
-                                    return (member, syntax) switch
-                                    {
-                                        (IFieldSymbol, VariableDeclaratorSyntax declarator) => declarator.Identifier.GetLocation(),
-                                        (IPropertySymbol, PropertyDeclarationSyntax property) => property.Identifier.GetLocation(),
-                                        _ => Location.None
-                                    };
-                                }
-
-                                // Check if the member has the OSStructureField attribute
-                                var hasOSStructureFieldAttribute = member.GetAttributes()
-                                    .Any(attr => attr.AttributeClass?.Name is "OSStructureFieldAttribute" or "OSStructureField");
-
-                                if (hasOSStructureFieldAttribute && !member.DeclaredAccessibility.HasFlag(Accessibility.Public))
-                                {
-                                    // If the member is decorated with OSStructureField but not public, report diagnostic
-                                    var location = GetMemberLocation();
-                                    if (!location.Equals(Location.None))
-                                    {
-                                        context.ReportDiagnostic(
-                                            Diagnostic.Create(
-                                                NonPublicStructureFieldRule,
-                                                location,
-                                                member.Name,
-                                                typeSymbol.Name));
-                                    }
-                                }
-
-                                if (hasOSStructureFieldAttribute)
-                                {
-                                    // Retrieve the OSStructureField attribute instance
-                                    var osStructureField = member.GetAttributes()
-                                        .First(attr => attr.AttributeClass?.Name is "OSStructureField" or "OSStructureFieldAttribute");
-
-                                    // Check if the DataType named argument is specified
-                                    if (osStructureField.NamedArguments.Any(na => na.Key == "DataType"))
-                                    {
-                                        var dataType = osStructureField.NamedArguments.First(na => na.Key == "DataType").Value;
-                                        var type = member is IFieldSymbol fieldSymbol ? fieldSymbol.Type :
-                                            (member is IPropertySymbol propertySymbol ? propertySymbol.Type : null);
-
-                                        // Check if the DataType mapping is incompatible
-                                        if (HasIncompatibleDataTypeMapping(type, dataType))
-                                        {
-                                            // Report diagnostic if the type mapping is unsupported
-                                            context.ReportDiagnostic(
-                                                Diagnostic.Create(
-                                                    UnsupportedTypeMappingRule,
-                                                    GetMemberLocation(),
-                                                    member.Name));
-                                        }
-                                    }
-                                }
-
-                                // Check if the member has the OSIgnore attribute
-                                var hasOSIgnoreAttribute = member.GetAttributes()
-                                    .Any(attr => attr.AttributeClass?.Name is "OSIgnoreAttribute" or "OSIgnore");
-
-                                if (hasOSIgnoreAttribute && !member.DeclaredAccessibility.HasFlag(Accessibility.Public))
-                                // If the member is decorated with OSIgnore but not public, report diagnostic
-                                {
-                                    var location = GetMemberLocation();
-                                    if (!location.Equals(Location.None))
-                                    {
-                                        context.ReportDiagnostic(
-                                            Diagnostic.Create(
-                                                NonPublicIgnoredFieldRule,
-                                                location,
-                                                member.Name,
-                                                typeSymbol.Name));
-                                    }
-                                }
-
-                                // If the member is a public field or property, validate its type
-                                if ((member is IFieldSymbol field && field.DeclaredAccessibility == Accessibility.Public) ||
-                                    (member is IPropertySymbol property && property.DeclaredAccessibility == Accessibility.Public))
-                                {
-                                    ITypeSymbol memberType = member switch
-                                    {
-                                        IFieldSymbol f => f.Type,
-                                        IPropertySymbol p => p.Type,
-                                        _ => null
-                                    };
-
-                                    if (memberType != null && !IsValidParameterType(memberType, context.Compilation))
-                                    {
-                                        // Get the location of the member's type
-                                        Location location = member.DeclaringSyntaxReferences.First().GetSyntax().GetLocation();
-
-                                        // Report diagnostic if the parameter type is unsupported
-                                        context.ReportDiagnostic(
-                                            Diagnostic.Create(
-                                                UnsupportedParameterTypeRule,
-                                                location,
-                                                typeSymbol.Name,
-                                                memberType.ToDisplayString()));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }, SymbolKind.NamedType);
-
-                // Register handler for interface analysis
-                compilationContext.RegisterSymbolAction(context =>
-                {
-                    if (context.Symbol is INamedTypeSymbol typeSymbol &&
-                        typeSymbol.TypeKind == TypeKind.Interface)
-                    {
-                        // Check if the interface has the OSInterface attribute
-                        var osInterfaceAttribute = typeSymbol.GetAttributes()
-                            .FirstOrDefault(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
-
-                        if (osInterfaceAttribute != null)
-                        {
-                            // Get the syntax node for the interface declaration
-                            var syntaxRef = typeSymbol.DeclaringSyntaxReferences.FirstOrDefault();
-                            if (syntaxRef != null &&
-                                syntaxRef.GetSyntax() is InterfaceDeclarationSyntax syntax)
-                            {
-                                // Add the interface to the tracking dictionary for later analysis
-                                osInterfaces.TryAdd(typeSymbol.Name, (syntax, typeSymbol));
-
-                                // Check if the interface has any methods - it must not be empty
-                                if (!typeSymbol.GetMembers().OfType<IMethodSymbol>().Any())
-                                {
-                                    // Report diagnostic if the interface is empty
-                                    context.ReportDiagnostic(
-                                        Diagnostic.Create(
-                                            EmptyInterfaceRule,
-                                            syntax.Identifier.GetLocation(),
-                                            typeSymbol.Name));
-                                }
-
-                                // Extract library name from attribute or interface name
-                                string libraryName = null;
-
-                                // First, check the 'Name' property in the attribute
-                                var nameArg = osInterfaceAttribute.NamedArguments
-                                    .FirstOrDefault(na => na.Key == "Name");
-                                if (nameArg.Key != null && nameArg.Value.Value is string specifiedName)
-                                {
-                                    libraryName = specifiedName;
-                                }
-                                else
-                                {
-                                    // If Name not found, check OriginalName property
-                                    var originalNameArg = osInterfaceAttribute.NamedArguments
-                                        .FirstOrDefault(na => na.Key == "OriginalName");
-                                    // If 'Name' not found, check the 'OriginalName' property
-                                    if (originalNameArg.Key != null && originalNameArg.Value.Value is string originalName)
-                                    {
-                                        libraryName = originalName;
-                                    }
-                                }
-
-                                // If no name specified in attributes, use the interface name without 'I' prefix
-                                libraryName ??= typeSymbol.Name.StartsWith("I", StringComparison.Ordinal) ?
-                                        typeSymbol.Name.Substring(1) : typeSymbol.Name;
-
-                                // Validate library name constraints
-
-                                // Check maximum length
-                                if (libraryName.Length > 50)
-                                {
-                                    // Report diagnostic if name exceeds maximum length
-                                    context.ReportDiagnostic(
-                                        Diagnostic.Create(
-                                            NameMaxLengthExceededRule,
-                                            syntax.GetLocation(),
-                                            libraryName));
-                                }
-
-                                // Check if name starts with a number
-                                if (char.IsDigit(libraryName[0]))
-                                {
-                                    // Report diagnostic if name begins with a number
-                                    context.ReportDiagnostic(
-                                        Diagnostic.Create(
-                                            NameBeginsWithNumbersRule,
-                                            syntax.GetLocation(),
-                                            libraryName));
-                                }
-
-                                // Check for invalid characters (only letters, numbers, and underscores allowed)
-                                var invalidChars = libraryName.Where(c => !char.IsLetterOrDigit(c) && c != '_')
-                                 .Distinct()
-                                 .ToArray();
-                                if (invalidChars.Length > 0)
-                                {
-                                    // Report diagnostic if name contains unsupported characters
-                                    context.ReportDiagnostic(
-                                        Diagnostic.Create(
-                                            UnsupportedCharactersInNameRule,
-                                            syntax.GetLocation(),
-                                            libraryName,
-                                            string.Join(", ", invalidChars)));
-                                }
-
-                                // Verify interface is declared as public
-                                if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
-                                {
-                                    // Report diagnostic if interface is not public
-                                    context.ReportDiagnostic(
-                                        Diagnostic.Create(
-                                            NonPublicInterfaceRule,
-                                            syntax.GetLocation(),
-                                            typeSymbol.Name));
-                                }
-                            }
-                        }
-                    }
-                }, SymbolKind.NamedType);
-
-                // Register handler for method analysis
-                compilationContext.RegisterSymbolAction(context =>
-                {
-                    // Ensure the symbol is a method
-                    if (context.Symbol is IMethodSymbol methodSymbol)
-                    {
-                        // Get method declaration syntax
-                        var syntaxRef = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault();
-                        if (syntaxRef != null &&
-                            syntaxRef.GetSyntax() is MethodDeclarationSyntax methodSyntax)
-                        {
-                            // Get containing type to check if it's an OSInterface or implements one
-                            var containingType = methodSymbol.ContainingType;
-
-                            // Check if the method is directly in an OSInterface
-                            var hasOSInterfaceAttribute = containingType.GetAttributes()
-                                .Any(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
-
-                            var implementsOSInterface = false;
-                            if (!hasOSInterfaceAttribute)
-                            {
-                                // Check if method is in a class that implements an OSInterface
-                                implementsOSInterface = containingType.Interfaces
-                                    .Any(i => i.GetAttributes()
-                                        .Any(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface"));
-                            }
-
-                            if (hasOSInterfaceAttribute || implementsOSInterface)
-                            {
-                                // Enforce naming conventions: methods should not start with an underscore
-                                if (methodSymbol.Name.StartsWith("_"))
-                                {
-                                    // Report diagnostic if method name starts with an underscore
-                                    context.ReportDiagnostic(
-                                        Diagnostic.Create(
-                                            NameBeginsWithUnderscoresRule,
-                                            methodSyntax.GetLocation(),
-                                            "Method",
-                                            methodSymbol.Name));
-                                }
-                            }
-
-                            // Reference parameter check only for OSInterface methods (not implementations)
-                            if (hasOSInterfaceAttribute)
-                            {
-                                foreach (var parameter in methodSymbol.Parameters)
-                                {
-                                    // Check each parameter for ref/out/in modifiers
-                                    if (parameter.RefKind is RefKind.Ref or RefKind.Out or RefKind.In)
-                                    {
-                                        if (parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ParameterSyntax parameterSyntax)
-                                        {
-                                            // Report diagnostic if parameter is passed by reference
-                                            context.ReportDiagnostic(
-                                                Diagnostic.Create(
-                                                    ParameterByReferenceRule,
-                                                    parameterSyntax.GetLocation(),
-                                                    parameter.Name,
-                                                    methodSymbol.Name));
-                                        }
-                                    }
-
-                                    // Check for default values
-                                    if (parameter.HasExplicitDefaultValue && !IsValidParameterDefaultValue(parameter))
-                                    {
-                                        // Retrieve parameter syntax to locate the default value expression
-                                        if (parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ParameterSyntax parameterSyntax &&
-                                            parameterSyntax.Default?.Value != null)
-                                        {
-                                            // Report diagnostic if default value is unsupported
-                                            context.ReportDiagnostic(
-                                                Diagnostic.Create(
-                                                    UnsupportedDefaultValueRule,
-                                                    parameterSyntax.Default.Value.GetLocation(),
-                                                    parameter.Name));
-                                        }
-                                    }
-
-                                    // Check if the parameter type requires OSStructure decoration
-                                    var allStructuresNotExposed = GetAllTypesInCompilation(
-                                        context.Compilation,
-                                        t => !t.DeclaringSyntaxReferences.IsEmpty &&
-                                            t.TypeKind == TypeKind.Struct &&
-                                             !t.GetAttributes().Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure")
-                                    );
-
-                                    // Determine if any structure type used in the parameter is not decorated with OSStructure
-                                    if (allStructuresNotExposed.Any(s => s.Name == parameter.Type.Name || ((INamedTypeSymbol)parameter.Type).IsGenericType && ((INamedTypeSymbol)parameter.Type).TypeArguments.Any(t => t.Name == s.Name)))
-                                    {
-                                        var structure = allStructuresNotExposed.First(s => s.Name == parameter.Type.Name ||
-                                            ((INamedTypeSymbol)parameter.Type).IsGenericType &&
-                                            ((INamedTypeSymbol)parameter.Type).TypeArguments.Any(t => t.Name == s.Name));
-
-                                        if (parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ParameterSyntax parameterSyntax)
-                                        {
-                                            // Report diagnostic if struct is missing OSStructure decoration
-                                            context.ReportDiagnostic(
-                                                Diagnostic.Create(
-                                                    MissingStructureDecorationRule,
-                                                    parameterSyntax.GetLocation(),
-                                                    structure.Name,
-                                                    parameter.Name));
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }, SymbolKind.Method);
-
-                // Register handler for class analysis
-                compilationContext.RegisterSymbolAction(context =>
-                {
-                    if (context.Symbol is INamedTypeSymbol typeSymbol &&
-                        typeSymbol.TypeKind == TypeKind.Class)
-                    {
-                        // Iterate through each interface implemented by the class
-                        foreach (var implementedInterface in typeSymbol.Interfaces)
-                        {
-                            // Check if the interface has the OSInterface attribute
-                            var hasOSInterfaceAttribute = implementedInterface.GetAttributes()
-                                .Any(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
-
-                            if (hasOSInterfaceAttribute)
-                            {
-                                // Verify that the implementing class is public
-                                if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public) &&
-                                    typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ClassDeclarationSyntax publicClassDeclaration)
-                                {
-                                    // Report diagnostic if the implementing class is not public
-                                    context.ReportDiagnostic(
-                                        Diagnostic.Create(
-                                            MissingPublicImplementationRule,
-                                            publicClassDeclaration.Identifier.GetLocation(),
-                                            implementedInterface.Name));
-                                }
-
-                                // Check for a public parameterless constructor
-                                var hasPublicParameterlessConstructor = typeSymbol.Constructors.Any(c =>
-                                    c.DeclaredAccessibility == Accessibility.Public &&
-                                    c.Parameters.Length == 0);
-
-                                if (!hasPublicParameterlessConstructor &&
-                                    typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ClassDeclarationSyntax constructorClassDeclaration)
-                                {
-                                    // Report diagnostic if no public parameterless constructor is found
-                                    context.ReportDiagnostic(
-                                        Diagnostic.Create(
-                                            NonInstantiableInterfaceRule,
-                                            constructorClassDeclaration.Identifier.GetLocation(),
-                                            typeSymbol.Name));
-                                }
-                            }
-                        }
-                    }
-                }, SymbolKind.NamedType);
-
-
-                // Register end-of-compilation analysis to perform final validations
-                compilationContext.RegisterCompilationEndAction(context =>
-                {
-                    if (osInterfaces.Count == 0)
-                    {
-                        // If no OSInterface is found, check if any interfaces exist at all
-                        var interfaces = GetAllTypesInCompilation(
-                            context.Compilation,
-                            t => !t.DeclaringSyntaxReferences.IsEmpty &&
-                                 t.TypeKind == TypeKind.Interface).ToList();
-
-                        if (interfaces.Any() &&
-                           interfaces.First().DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is InterfaceDeclarationSyntax interfaceDeclaration)
-                        {
-                            // Report diagnostic if no interface is decorated with OSInterface
-                            context.ReportDiagnostic(
-                                Diagnostic.Create(
-                                    NoSingleInterfaceRule,
-                                    interfaceDeclaration.GetLocation()));
-                        }
-                    }
-                    else if (osInterfaces.Count > 1)
-                    {
-                        // If multiple OSInterfaces are found, report diagnostic
-                        // Get the first interface by source location for error reporting
-                        var (Syntax, Symbol) = osInterfaces.Values
-                            .OrderBy(i => i.Syntax.GetLocation().GetLineSpan().StartLinePosition)
-                            .First();
-
-                        // Create a comma-separated list of interface names
-                        var interfaceNames = string.Join(", ",
-                            osInterfaces.Keys.OrderBy(name => name));
-
-                        // Report diagnostic indicating multiple OSInterfaces
-                        context.ReportDiagnostic(
-                            Diagnostic.Create(ManyInterfacesRule, Syntax.GetLocation(), interfaceNames));
-                    }
-                    else
-                    {
-                        // Exactly one OSInterface found - validate its implementation
-                        var (Syntax, Symbol) = osInterfaces.Values.First();
-
-                        // Find implementing classes across all namespaces
-                        var implementations = GetAllTypesInCompilation(
-                            context.Compilation,
-                            t => t.TypeKind == TypeKind.Class &&
-                                 t.Interfaces.Contains(Symbol, SymbolEqualityComparer.Default)
-                        ).ToList();
-
-                        if (!implementations.Any())
-                        {
-                            // Report diagnostic if no implementing class is found
-                            context.ReportDiagnostic(
-                                Diagnostic.Create(
-                                    MissingImplementationRule,
-                                    Syntax.GetLocation(),
-                                    Symbol.Name));
-                        }
-                        else if (implementations.Count > 1)
-                        {
-                            // Create a comma-separated list of implementing class names
-                            var implementationNames = string.Join(", ",
-                                implementations.Select(i => i.Name).OrderBy(name => name));
-
-                            // Report diagnostic indicating multiple implementations
-                            context.ReportDiagnostic(
-                                Diagnostic.Create(
-                                    ManyImplementationRule,
-                                    Syntax.GetLocation(),
-                                    Symbol.Name,
-                                    implementationNames));
-                        }
-                    }
-
-                    // Check for duplicate structure names across the compilation
-                    var allStructures = GetAllTypesInCompilation(
-                        context.Compilation,
-                        t => t.TypeKind == TypeKind.Struct &&
-                             t.GetAttributes().Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure")
-                    );
-
-#pragma warning disable RS1024 // Intentionally comparing names as strings to find duplicates
-                    var duplicates = allStructures
-                        .GroupBy(x => x.Name)
-                        .Where(g => g.Count() > 1);
-#pragma warning restore RS1024
-
-                    foreach (var duplicate in duplicates)
-                    {
-                        // Get the first struct (ordered by name) for consistent error reporting
-                        var firstStruct = duplicate
-                            .OrderBy(d => d.Name)
-                            .First();
-
-                        // Create a comma-separated list of struct names that share the same name
-                        var structNames = string.Join(", ",
-                            duplicate.Select(d => d.Name).OrderBy(n => n));
-
-                        // Report diagnostic indicating duplicate structure names
                         context.ReportDiagnostic(
                             Diagnostic.Create(
-                                DuplicateNameRule,
-                                firstStruct.Locations.First(),
-                                structNames,
-                                duplicate.Key));
+                                NonPublicIgnoredFieldRule,
+                                loc,
+                                member.Name,
+                                typeSymbol.Name));
                     }
+                }
 
-                });
-            });
+                // For public fields or properties, confirm that the type is supported
+                if ((member is IFieldSymbol field && field.DeclaredAccessibility == Accessibility.Public) ||
+                    (member is IPropertySymbol prop && prop.DeclaredAccessibility == Accessibility.Public))
+                {
+                    ITypeSymbol memberType = member switch
+                    {
+                        IFieldSymbol f => f.Type,
+                        IPropertySymbol p => p.Type,
+                        _ => null
+                    };
+
+                    // If the type is not valid, report the unsupported parameter type
+                    if (memberType != null && !IsValidParameterType(memberType, context.Compilation))
+                    {
+                        // Get the location of the member's type
+                        var loc = member.DeclaringSyntaxReferences.First().GetSyntax().GetLocation();
+
+                        // Report diagnostic if the parameter type is unsupported
+                        context.ReportDiagnostic(
+                            Diagnostic.Create(
+                                UnsupportedParameterTypeRule,
+                                loc,
+                                typeSymbol.Name,
+                                memberType.ToDisplayString()));
+                    }
+                }
+            }
         }
 
-        // A set of valid parameter types for UnsupportedDefaultValueRule
+        /// <summary>
+        /// Analyzes interface declarations.
+        /// </summary>
+        private static void AnalyzeInterface(
+            SymbolAnalysisContext context,
+            INamedTypeSymbol typeSymbol,
+            ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)> osInterfaces)
+        {
+            // Check if the interface has the OSInterface attribute
+            var osInterfaceAttr = typeSymbol.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
+            if (osInterfaceAttr == null) return;
+
+            var syntaxRef = typeSymbol.DeclaringSyntaxReferences.FirstOrDefault();
+            if (syntaxRef == null) return;
+            if (syntaxRef.GetSyntax() is not InterfaceDeclarationSyntax syntax) return;
+
+            // Track this OSInterface for final "single interface" checks in AnalyzeCompilationEnd
+            osInterfaces.TryAdd(typeSymbol.Name, (syntax, typeSymbol));
+
+            // Check if the interface has at least one method
+            if (!typeSymbol.GetMembers().OfType<IMethodSymbol>().Any())
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        EmptyInterfaceRule,
+                        syntax.Identifier.GetLocation(),
+                        typeSymbol.Name));
+            }
+
+            // Extract library name from attribute or interface name
+            string libraryName = null;
+            // First, check the 'Name' property
+            var nameArg = osInterfaceAttr.NamedArguments.FirstOrDefault(na => na.Key == "Name");
+            if (nameArg.Key != null && nameArg.Value.Value is string specifiedName)
+            {
+                libraryName = specifiedName;
+            }
+            else
+            {
+                // Otherwise, check 'OriginalName' property
+                var originalNameArg = osInterfaceAttr.NamedArguments.FirstOrDefault(na => na.Key == "OriginalName");
+                if (originalNameArg.Key != null && originalNameArg.Value.Value is string originalName)
+                {
+                    libraryName = originalName;
+                }
+            }
+            // If no name specified in attributes, use the interface name without 'I' prefix
+            libraryName ??= (typeSymbol.Name.StartsWith("I", StringComparison.Ordinal))
+                ? typeSymbol.Name.Substring(1)
+                : typeSymbol.Name;
+
+            // Validate name constraints
+            if (libraryName.Length > 50)
+            {
+                // Report a diagnostic if name exceeds maximum length
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        NameMaxLengthExceededRule,
+                        syntax.GetLocation(),
+                        libraryName));
+            }
+
+            // Name must not start with a digit
+            if (char.IsDigit(libraryName[0]))
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        NameBeginsWithNumbersRule,
+                        syntax.GetLocation(),
+                        libraryName));
+            }
+
+            // Name must only contain letters, digits, or underscores
+            var invalidChars = libraryName.Where(c => !char.IsLetterOrDigit(c) && c != '_').Distinct().ToArray();
+            if (invalidChars.Length > 0)
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        UnsupportedCharactersInNameRule,
+                        syntax.GetLocation(),
+                        libraryName,
+                        string.Join(", ", invalidChars)));
+            }
+
+            // The interface must be public
+            if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public))
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        NonPublicInterfaceRule,
+                        syntax.GetLocation(),
+                        typeSymbol.Name));
+            }
+        }
+
+        /// <summary>
+        /// Analyzes method declarations.
+        /// <summary>
+        private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol)
+        {
+            var syntaxRef = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault();
+            if (syntaxRef == null) return;
+            if (syntaxRef.GetSyntax() is not MethodDeclarationSyntax methodSyntax) return;
+
+            var containingType = methodSymbol.ContainingType;
+
+            // Determine if the method is in an OSInterface or in a class that implements one
+            var hasOSInterfaceAttribute = containingType.GetAttributes()
+                .Any(a => a.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
+
+            bool implementsOSInterface = false;
+            if (!hasOSInterfaceAttribute)
+            {
+                implementsOSInterface = containingType.Interfaces
+                    .Any(i => i.GetAttributes()
+                        .Any(a => a.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface"));
+            }
+
+            // If this method is part of the OSInterface or an implementation of it, check for underscores
+            if ((hasOSInterfaceAttribute || implementsOSInterface) &&
+                methodSymbol.Name.StartsWith("_", StringComparison.Ordinal))
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        NameBeginsWithUnderscoresRule,
+                        methodSyntax.GetLocation(),
+                        "Method",
+                        methodSymbol.Name));
+            }
+
+            // Only check for by-ref parameters in the OSInterface itself (not the implementation)
+            if (hasOSInterfaceAttribute)
+            {
+                foreach (var parameter in methodSymbol.Parameters)
+                {
+                    // Disallow reference-like (ref/out/in) parameters
+                    if (parameter.RefKind is RefKind.Ref or RefKind.Out or RefKind.In)
+                    {
+                        var paramSyntax = parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as ParameterSyntax;
+                        if (paramSyntax != null)
+                        {
+                            context.ReportDiagnostic(
+                                Diagnostic.Create(
+                                    ParameterByReferenceRule,
+                                    paramSyntax.GetLocation(),
+                                    parameter.Name,
+                                    methodSymbol.Name));
+                        }
+                    }
+
+                    // Check if the default value is valid (compile-time constant and supported type)
+                    if (parameter.HasExplicitDefaultValue &&
+                        !IsValidParameterDefaultValue(parameter) &&
+                        parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ParameterSyntax defParamSyn &&
+                        defParamSyn.Default?.Value != null)
+                    {
+                        context.ReportDiagnostic(
+                            Diagnostic.Create(
+                                UnsupportedDefaultValueRule,
+                                defParamSyn.Default.Value.GetLocation(),
+                                parameter.Name));
+                    }
+
+                    // Check if the parameter references a struct that is not decorated with [OSStructure]
+                    var allStructuresNotExposed = GetAllTypesInCompilation(
+                        context.Compilation,
+                        t => !t.DeclaringSyntaxReferences.IsEmpty &&
+                             t.TypeKind == TypeKind.Struct &&
+                             !t.GetAttributes().Any(attr => attr.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure"));
+
+                    // Determine if any structure type used in the parameter is not decorated with OSStructure
+                    bool usesUndecoratedStruct = allStructuresNotExposed.Any(s =>
+                        s.Name == parameter.Type.Name ||
+                        (parameter.Type is INamedTypeSymbol nts && nts.IsGenericType &&
+                         nts.TypeArguments.Any(t => t.Name == s.Name)));
+
+                    if (usesUndecoratedStruct)
+                    {
+                        // Find the actual struct in question
+                        var structure = allStructuresNotExposed.First(s =>
+                            s.Name == parameter.Type.Name ||
+                            (parameter.Type is INamedTypeSymbol nts2 && nts2.IsGenericType &&
+                             nts2.TypeArguments.Any(t => t.Name == s.Name)));
+
+                        if (parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ParameterSyntax paramSyn)
+                        {
+                            // Report diagnostic if struct is missing OSStructure decoration
+                            context.ReportDiagnostic(
+                                Diagnostic.Create(
+                                    MissingStructureDecorationRule,
+                                    paramSyn.GetLocation(),
+                                    structure.Name,
+                                    parameter.Name));
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Analyzes class declarations.
+        /// </summary>
+        private static void AnalyzeClass(SymbolAnalysisContext context, INamedTypeSymbol typeSymbol)
+        {
+            // Check each interface implemented by this class to see if it has [OSInterface]
+            foreach (var implementedInterface in typeSymbol.Interfaces)
+            {
+                var hasOSInterfaceAttribute = implementedInterface.GetAttributes()
+                    .Any(a => a.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
+
+                if (hasOSInterfaceAttribute)
+                {
+                    // The implementing class must be public
+                    if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public) &&
+                        typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ClassDeclarationSyntax clsDecl)
+                    {
+                        context.ReportDiagnostic(
+                            Diagnostic.Create(
+                                MissingPublicImplementationRule,
+                                clsDecl.Identifier.GetLocation(),
+                                implementedInterface.Name));
+                    }
+
+                    // Must have a public parameterless constructor
+                    bool hasPublicParameterlessConstructor = typeSymbol.Constructors.Any(c =>
+                        c.DeclaredAccessibility == Accessibility.Public && c.Parameters.Length == 0);
+                    if (!hasPublicParameterlessConstructor &&
+                        typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ClassDeclarationSyntax ctorDecl)
+                    {
+                        context.ReportDiagnostic(
+                            Diagnostic.Create(
+                                NonInstantiableInterfaceRule,
+                                ctorDecl.Identifier.GetLocation(),
+                                typeSymbol.Name));
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Called once after all symbols have been analyzed. Ensures:
+        /// - Exactly one [OSInterface] is declared; otherwise, report 
+        ///   NoSingleInterface or ManyInterfaces.
+        /// - That each declared [OSStructure] name is unique across the compilation.
+        /// - Checks if the single [OSInterface] had an implementing class or not, etc.
+        /// </summary>
+        private static void AnalyzeCompilationEnd(
+            CompilationAnalysisContext context,
+            ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)> osInterfaces)
+        {
+            if (osInterfaces.Count == 0)
+            {
+                // If no OSInterface is found, check if we have any interface at all
+                var interfaces = GetAllTypesInCompilation(
+                    context.Compilation,
+                    t => !t.DeclaringSyntaxReferences.IsEmpty &&
+                         t.TypeKind == TypeKind.Interface).ToList();
+
+                if (interfaces.Any() &&
+                    interfaces[0].DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is InterfaceDeclarationSyntax ifDecl)
+                {
+                    // Report diagnostic if no interface is decorated with OSInterface
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            NoSingleInterfaceRule,
+                            ifDecl.GetLocation()));
+                }
+            }
+            else if (osInterfaces.Count > 1)
+            {
+                // Multiple OSInterface found
+                var firstSyntax = osInterfaces.Values
+                    .OrderBy(i => i.Syntax.GetLocation().GetLineSpan().StartLinePosition)
+                    .First()
+                    .Syntax;
+
+                // Create a comma-separated list of interface names
+                var interfaceNames = string.Join(", ", osInterfaces.Keys.OrderBy(n => n));
+                // Report diagnostic indicating multiple OSInterfaces
+                context.ReportDiagnostic(
+                    Diagnostic.Create(ManyInterfacesRule, firstSyntax.GetLocation(), interfaceNames));
+            }
+            else
+            {
+                // Exactly one OSInterface found
+                var (syntax, symbol) = osInterfaces.Values.First();
+
+                // Find classes implementing this interface
+                var implementations = GetAllTypesInCompilation(
+                    context.Compilation,
+                    t => t.TypeKind == TypeKind.Class &&
+                         t.Interfaces.Contains(symbol, SymbolEqualityComparer.Default))
+                    .ToList();
+
+                if (!implementations.Any())
+                {
+                    // Report diagnostic if no implementing class is found
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            MissingImplementationRule,
+                            syntax.GetLocation(),
+                            symbol.Name));
+                }
+                else if (implementations.Count > 1)
+                {
+                    // Create a comma-separated list of implementing class names
+                    var implNames = string.Join(", ",
+                        implementations.Select(i => i.Name).OrderBy(n => n));
+
+                    // Report diagnostic indicating multiple implementations
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            ManyImplementationRule,
+                            syntax.GetLocation(),
+                            symbol.Name,
+                            implNames));
+                }
+            }
+
+            // Check for duplicate struct names across the compilation
+            var allStructures = GetAllTypesInCompilation(
+                context.Compilation,
+                t => t.TypeKind == TypeKind.Struct &&
+                     t.GetAttributes().Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure"));
+
+#pragma warning disable RS1024
+            var duplicates = allStructures.GroupBy(x => x.Name).Where(g => g.Count() > 1);
+#pragma warning restore RS1024
+
+            foreach (var duplicate in duplicates)
+            {
+                // Get the first struct (ordered by name) for consistent error reporting
+                var firstStruct = duplicate.OrderBy(d => d.Name).First();
+
+                // Create a comma-separated list of struct names that share the same name
+                var structNames = string.Join(", ", duplicate.Select(d => d.Name).OrderBy(n => n));
+
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        DuplicateNameRule,
+                        firstStruct.Locations.First(),
+                        structNames,
+                        duplicate.Key));
+            }
+        }
+
+        /// <summary>
+        /// Retrieves all <see cref="INamedTypeSymbol"/>s in the current compilation 
+        /// that match the given predicate. Traverses through all namespaces in a DFS manner.
+        /// </summary>
+        private static IEnumerable<INamedTypeSymbol> GetAllTypesInCompilation(
+            Compilation compilation,
+            Func<INamedTypeSymbol, bool> predicate)
+        {
+            var stack = new Stack<INamespaceSymbol>();
+            stack.Push(compilation.GlobalNamespace);
+
+            // Use a stack to perform depth-first traversal of namespaces
+            while (stack.Count > 0)
+            {
+                var current = stack.Pop();
+
+                // Get types in the current namespace that match the predicate
+                foreach (var type in current.GetTypeMembers().Where(predicate))
+                {
+                    yield return type;
+                }
+                // Add nested namespaces to the stack for further traversal
+                foreach (var nested in current.GetNamespaceMembers())
+                {
+                    stack.Push(nested);
+                }
+            }
+        }
+
+        /// <summary>
+        /// A set of valid parameter types for <see cref="UnsupportedDefaultValueRule"/>.
+        /// Anything not in this set (and is not null for reference types) is considered invalid.
+        /// </summary>
         private static readonly HashSet<string> ValidParameterTypes = new()
         {
             "String",
@@ -921,14 +935,13 @@ namespace CustomCode_Analyzer
         };
 
         /// <summary>
-        /// Validates parameter default values for UnsupportedDefaultValueRule
+        /// Checks whether a parameter's default value is a compile-time constant of a supported type.
         /// </summary>
-        private bool IsValidParameterDefaultValue(IParameterSymbol parameter)
+        private static bool IsValidParameterDefaultValue(IParameterSymbol parameter)
         {
-            // If no explicit default value is specified, it's considered valid
             if (!parameter.HasExplicitDefaultValue)
             {
-                return true;
+                return true; // No default value means no rule violation
             }
 
             // Allow null for reference types
@@ -936,42 +949,40 @@ namespace CustomCode_Analyzer
             {
                 return true;
             }
-
-            // The type must be among the supported parameter types
+            // Check if the type is in the set of valid parameter types
             if (!ValidParameterTypes.Contains(parameter.Type.Name))
             {
                 return false;
             }
 
+            // Attempt to get the parameter syntax and ensure it's a literal expression
             var parameterSyntax = parameter.DeclaringSyntaxReferences
                 .Select(sr => sr.GetSyntax())
                 .OfType<ParameterSyntax>()
                 .FirstOrDefault();
 
-            // If the syntax node is not found, assume the default value is invalid
+            // If no syntax found, we assume it's invalid
             if (parameterSyntax == null)
             {
                 return false;
             }
 
-            // Check if the default value is a literal expression (e.g., "hello", 42)
+            // Check if the default value is a literal expression
             // This ensures that the default value is a compile-time constant
             return parameterSyntax.Default?.Value is LiteralExpressionSyntax;
         }
 
-
         /// <summary>
-        /// Validates type support for UnsupportedParameterTypeRule
+        /// Checks if a given <see cref="ITypeSymbol"/> is a valid parameter type
+        /// for fields/properties in an [OSStructure] context.
         /// </summary>
-        private bool IsValidParameterType(ITypeSymbol typeSymbol, Compilation compilation)
+        private static bool IsValidParameterType(ITypeSymbol typeSymbol, Compilation compilation)
         {
             if (typeSymbol == null)
             {
-                // Null types are considered unsupported
                 return false;
             }
-
-            // Check for primitive types using special type enumeration
+            // Check for primitive or special types
             if (typeSymbol.SpecialType is
                 SpecialType.System_String or
                 SpecialType.System_Int32 or
@@ -984,65 +995,54 @@ namespace CustomCode_Analyzer
             {
                 return true;
             }
-
             // Check if the type is a byte array
             if (typeSymbol is IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Byte })
             {
                 return true;
             }
-
-            // Check if the type is a struct decorated with OSStructure
+            // Check if the type is a struct with [OSStructure]
             if (typeSymbol.TypeKind == TypeKind.Struct &&
-                typeSymbol.GetAttributes().Any(attr => attr.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure"))
+                typeSymbol.GetAttributes().Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure"))
             {
                 return true;
             }
-
-            // Check for generic enumerable types
+            // Check if the type is a generic type that implements IEnumerable
             if (typeSymbol is INamedTypeSymbol { IsGenericType: true } namedTypeSymbol &&
-            namedTypeSymbol.AllInterfaces.Any(i => i.ToDisplayString() == "System.Collections.IEnumerable"))
+                namedTypeSymbol.AllInterfaces.Any(i => i.ToDisplayString() == "System.Collections.IEnumerable"))
             {
                 var typeArg = namedTypeSymbol.TypeArguments.FirstOrDefault();
                 return typeArg != null && IsValidParameterType(typeArg, compilation);
             }
-
-            // If none of the above conditions are met, the type is unsupported
+            // If none match, it's not a supported parameter type
             return false;
         }
 
         /// <summary>
-        /// Validates OSStructureField DataType mappings for the UnsupportedTypeMappingRule
+        /// Checks for mismatches between the declared .NET type of a field/property and
+        /// the OutSystems DataType specified in [OSStructureField(DataType = ...)].
+        /// Returns <c>true</c> if the mapping is incompatible.
         /// </summary>
         private bool HasIncompatibleDataTypeMapping(ITypeSymbol type, TypedConstant dataType)
         {
-            if (type == null) return false;
+            if (type == null)
+            {
+                return false;
+            }
             return dataType.Value switch
             {
-                // Text
-                1 => type.Name.ToLowerInvariant() != "string",
-                // Integer
-                2 => type.Name.ToLowerInvariant() != "int32",
-                // LongInteger
-                3 => type.Name.ToLowerInvariant() != "int64",
-                // Decimal
-                4 => type.Name.ToLowerInvariant() != "decimal",
-                // Boolean
-                5 => type.Name.ToLowerInvariant() != "bool",
-                // DateTime
-                6 => type.Name.ToLowerInvariant() != "datetime",
-                // Date
-                7 => type.Name.ToLowerInvariant() != "datetime",
-                // Time
-                8 => type.Name.ToLowerInvariant() != "datetime",
-                // PhoneNumber
-                9 => type.Name.ToLowerInvariant() != "string",
-                // Email
-                10 => type.Name.ToLowerInvariant() != "string",
-                // BinaryData
-                11 => type.Name.ToLowerInvariant() != "byte[]",
-                // Currency
-                12 => type.Name.ToLowerInvariant() != "decimal",
-                _ => true,// Unknown OSDataType
+                1 => !type.Name.Equals("String", StringComparison.OrdinalIgnoreCase),   // Text
+                2 => !type.Name.Equals("Int32", StringComparison.OrdinalIgnoreCase),    // Integer
+                3 => !type.Name.Equals("Int64", StringComparison.OrdinalIgnoreCase),    // LongInteger
+                4 => !type.Name.Equals("Decimal", StringComparison.OrdinalIgnoreCase),  // Decimal
+                5 => !type.Name.Equals("Boolean", StringComparison.OrdinalIgnoreCase),  // Boolean
+                6 => !type.Name.Equals("DateTime", StringComparison.OrdinalIgnoreCase), // DateTime
+                7 => !type.Name.Equals("DateTime", StringComparison.OrdinalIgnoreCase), // Date
+                8 => !type.Name.Equals("DateTime", StringComparison.OrdinalIgnoreCase), // Time
+                9 => !type.Name.Equals("String", StringComparison.OrdinalIgnoreCase),   // PhoneNumber
+                10 => !type.Name.Equals("String", StringComparison.OrdinalIgnoreCase),  // Email
+                11 => !type.Name.Equals("Byte[]", StringComparison.OrdinalIgnoreCase),  // BinaryData
+                12 => !type.Name.Equals("Decimal", StringComparison.OrdinalIgnoreCase), // Currency
+                _ => true
             };
         }
     }
