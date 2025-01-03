@@ -544,7 +544,7 @@ namespace CustomCode_Analyzer
         /// <summary>
         /// Analyzes interface declarations.
         /// </summary>
-        private void AnalyzeInterface(
+        private static void AnalyzeInterface(
             SymbolAnalysisContext context,
             INamedTypeSymbol typeSymbol,
             ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)> osInterfaces)
@@ -744,7 +744,7 @@ namespace CustomCode_Analyzer
         /// <summary>
         /// Analyzes class declarations.
         /// </summary>
-        private void AnalyzeClass(SymbolAnalysisContext context, INamedTypeSymbol typeSymbol)
+        private static void AnalyzeClass(SymbolAnalysisContext context, INamedTypeSymbol typeSymbol)
         {
             // Check each interface implemented by this class to see if it has [OSInterface]
             foreach (var implementedInterface in typeSymbol.Interfaces)
@@ -892,7 +892,7 @@ namespace CustomCode_Analyzer
         /// Retrieves all <see cref="INamedTypeSymbol"/>s in the current compilation 
         /// that match the given predicate. Traverses through all namespaces in a DFS manner.
         /// </summary>
-        private IEnumerable<INamedTypeSymbol> GetAllTypesInCompilation(
+        private static IEnumerable<INamedTypeSymbol> GetAllTypesInCompilation(
             Compilation compilation,
             Func<INamedTypeSymbol, bool> predicate)
         {
