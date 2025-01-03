@@ -461,8 +461,21 @@ namespace CustomCode_Analyzer
                                     if (osStructureField.NamedArguments.Any(na => na.Key == "DataType"))
                                     {
                                         var dataType = osStructureField.NamedArguments.First(na => na.Key == "DataType").Value;
-                                        var type = member is IFieldSymbol fieldSymbol ? fieldSymbol.Type :
-                                            (member is IPropertySymbol propertySymbol ? propertySymbol.Type : null);
+
+                                        // Determine the type based on member kind
+                                        ITypeSymbol type;
+                                        if (member is IFieldSymbol fieldSymbol)
+                                        {
+                                            type = fieldSymbol.Type;
+                                        }
+                                        else if (member is IPropertySymbol propertySymbol)
+                                        {
+                                            type = propertySymbol.Type;
+                                        }
+                                        else
+                                        {
+                                            type = null;
+                                        }
 
                                         // Check if the DataType mapping is incompatible
                                         if (HasIncompatibleDataTypeMapping(type, dataType))
@@ -664,19 +677,16 @@ namespace CustomCode_Analyzer
                                         .Any(attr => attr.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface"));
                             }
 
-                            if (hasOSInterfaceAttribute || implementsOSInterface)
+                            if ((hasOSInterfaceAttribute || implementsOSInterface) &&
+                                                            methodSymbol.Name.StartsWith("_"))
                             {
-                                // Enforce naming conventions: methods should not start with an underscore
-                                if (methodSymbol.Name.StartsWith("_"))
-                                {
-                                    // Report diagnostic if method name starts with an underscore
-                                    context.ReportDiagnostic(
-                                        Diagnostic.Create(
-                                            NameBeginsWithUnderscoresRule,
-                                            methodSyntax.GetLocation(),
-                                            "Method",
-                                            methodSymbol.Name));
-                                }
+                                // Report diagnostic if method name starts with an underscore
+                                context.ReportDiagnostic(
+                                    Diagnostic.Create(
+                                        NameBeginsWithUnderscoresRule,
+                                        methodSyntax.GetLocation(),
+                                        "Method",
+                                        methodSymbol.Name));
                             }
 
                             // Reference parameter check only for OSInterface methods (not implementations)
@@ -684,35 +694,31 @@ namespace CustomCode_Analyzer
                             {
                                 foreach (var parameter in methodSymbol.Parameters)
                                 {
-                                    // Check each parameter for ref/out/in modifiers
-                                    if (parameter.RefKind is RefKind.Ref or RefKind.Out or RefKind.In)
+                                    // Check for reference parameters
+                                    if (parameter.RefKind is RefKind.Ref or RefKind.Out or RefKind.In &&
+                                        parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ParameterSyntax refParameterSyntax)
                                     {
-                                        if (parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ParameterSyntax parameterSyntax)
-                                        {
-                                            // Report diagnostic if parameter is passed by reference
-                                            context.ReportDiagnostic(
-                                                Diagnostic.Create(
-                                                    ParameterByReferenceRule,
-                                                    parameterSyntax.GetLocation(),
-                                                    parameter.Name,
-                                                    methodSymbol.Name));
-                                        }
+                                        // Report diagnostic if parameter is passed by reference
+                                        context.ReportDiagnostic(
+                                            Diagnostic.Create(
+                                                ParameterByReferenceRule,
+                                                refParameterSyntax.GetLocation(),
+                                                parameter.Name,
+                                                methodSymbol.Name));
                                     }
 
                                     // Check for default values
-                                    if (parameter.HasExplicitDefaultValue && !IsValidParameterDefaultValue(parameter))
+                                    if (parameter.HasExplicitDefaultValue &&
+                                        !IsValidParameterDefaultValue(parameter) &&
+                                        parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ParameterSyntax defaultParameterSyntax &&
+                                        defaultParameterSyntax.Default?.Value != null)
                                     {
-                                        // Retrieve parameter syntax to locate the default value expression
-                                        if (parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ParameterSyntax parameterSyntax &&
-                                            parameterSyntax.Default?.Value != null)
-                                        {
-                                            // Report diagnostic if default value is unsupported
-                                            context.ReportDiagnostic(
-                                                Diagnostic.Create(
-                                                    UnsupportedDefaultValueRule,
-                                                    parameterSyntax.Default.Value.GetLocation(),
-                                                    parameter.Name));
-                                        }
+                                        // Report diagnostic if default value is unsupported
+                                        context.ReportDiagnostic(
+                                            Diagnostic.Create(
+                                                UnsupportedDefaultValueRule,
+                                                defaultParameterSyntax.Default.Value.GetLocation(),
+                                                parameter.Name));
                                     }
 
                                     // Check if the parameter type requires OSStructure decoration
@@ -807,7 +813,7 @@ namespace CustomCode_Analyzer
                                  t.TypeKind == TypeKind.Interface).ToList();
 
                         if (interfaces.Any() &&
-                           interfaces.First().DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is InterfaceDeclarationSyntax interfaceDeclaration)
+                                                   interfaces[0].DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is InterfaceDeclarationSyntax interfaceDeclaration)
                         {
                             // Report diagnostic if no interface is decorated with OSInterface
                             context.ReportDiagnostic(
@@ -820,9 +826,10 @@ namespace CustomCode_Analyzer
                     {
                         // If multiple OSInterfaces are found, report diagnostic
                         // Get the first interface by source location for error reporting
-                        var (Syntax, Symbol) = osInterfaces.Values
+                        var firstSyntax = osInterfaces.Values
                             .OrderBy(i => i.Syntax.GetLocation().GetLineSpan().StartLinePosition)
-                            .First();
+                            .First()
+                            .Syntax;
 
                         // Create a comma-separated list of interface names
                         var interfaceNames = string.Join(", ",
@@ -830,7 +837,7 @@ namespace CustomCode_Analyzer
 
                         // Report diagnostic indicating multiple OSInterfaces
                         context.ReportDiagnostic(
-                            Diagnostic.Create(ManyInterfacesRule, Syntax.GetLocation(), interfaceNames));
+                            Diagnostic.Create(ManyInterfacesRule, firstSyntax.GetLocation(), interfaceNames));
                     }
                     else
                     {
