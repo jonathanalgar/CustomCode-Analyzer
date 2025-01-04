@@ -42,13 +42,10 @@ If your project references the External Libraries SDK (`OutSystems.ExternalLibra
 
 ## TODO
 
-- [ ] Marketplace extensions for Visual Studio Code and Rider.
-- [ ] Beyond the rules: info-level guidance for [best practices](https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#best-practices) (statelessness checks, guidance on large binary files).
-- [ ] Explore viability of implementing [OS-ELG-MODL-05009](https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05009).
-- [ ] Explore [`CodeFixProvider`](https://learn.microsoft.com/en-us/dotnet/api/microsoft.codeanalysis.codefixes.codefixprovider?view=roslyn-dotnet-4.9.0) for auto-fixable rules.
+See [here](https://github.com/jonathanalgar/CustomCode-Analyzer/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement).
 
 ## Contributing
 
 Please report bugs and feature requests [here](https://github.com/jonathanalgar/CustomCode-Analyzer/issues/new/choose).
 
-PRs are welcome. Code quality improvements, features (especially those in the TODO list) and documentation improvements are all welcome 🤗 All changes to Analyzer code should pass all existing tests (`dotnet test`) and all new features should  be covered by new tests.
+PRs are welcome. Code quality improvements, new features (especially those unassigned and listed [here](https://github.com/jonathanalgar/CustomCode-Analyzer/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement)) and documentation improvements are all welcome 🤗 All changes to Analyzer code should pass all existing tests (`dotnet test`) and all new features should  be covered by new tests.
