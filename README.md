@@ -8,7 +8,7 @@
 
 > :information_source: This component is unofficial and unsupported by OutSystems.
 
-![Screenshot of Visual Studio Code displaying C# code with highlighted errors in the Problems panel, showing naming and mapping rule violations detected by a the ODC Custom Code Analyzer.](screenshot.png)
+![Screenshot of Visual Studio Code displaying C# code with highlighted errors in the Problems panel, showing naming and mapping rule violations detected by a the ODC Custom Code Analyzer.](https://github.com/jonathanalgar/CustomCode-Analyzer/blob/main/screenshot.png?raw=true)
 
 ## Overview
 

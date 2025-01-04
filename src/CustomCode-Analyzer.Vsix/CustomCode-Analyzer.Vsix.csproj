@@ -70,13 +70,7 @@
 			<IncludeInVSIX>true</IncludeInVSIX>
 			<Link>README.md</Link>
 		</Content>
-		<Content Include="..\..\screenshot.png">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-			<IncludeInVSIX>true</IncludeInVSIX>
-			<Link>Resources\screenshot.png</Link>
-		</Content>
 	</ItemGroup>
-
 
 	<ItemGroup>
 		<None Include="source.extension.vsixmanifest">
