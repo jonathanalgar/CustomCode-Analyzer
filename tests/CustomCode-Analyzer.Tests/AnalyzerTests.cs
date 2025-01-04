@@ -17,7 +17,6 @@ public interface ITestInterface
 {
     void TestMethod();
 }";
-            // Warning for missing OSInterface attribute - spans the interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoSingleInterface)
                 .WithSpan(2, 1, 5, 2);
 
@@ -35,7 +34,6 @@ namespace TestNamespace
         void TestMethod();
     }
 }";
-            // Warning for missing OSInterface attribute - spans the interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoSingleInterface)
                 .WithSpan(4, 5, 7, 6);
 
@@ -69,7 +67,6 @@ public class SecondImplementation : ISecondInterface
 {
     public void TestMethod() { }
 }";
-            // Warning for multiple OSInterface attributes - spans the first interface's entire declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("IFirstInterface, ISecondInterface");
@@ -106,7 +103,6 @@ namespace MyNamespace
         public void TestMethod() { }
     }
 }";
-            // Warning for multiple OSInterface attributes - spans the first interface's declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
                 .WithSpan(4, 5, 8, 6)
                 .WithArguments("IFirstInterface, ISecondInterface");
@@ -144,7 +140,6 @@ namespace Second
         public void TestMethod() { }
     }
 }";
-            // Warning for multiple OSInterface attributes across namespaces - spans the first interface's declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
                 .WithSpan(4, 5, 8, 6)
                 .WithArguments("IFirstInterface, ISecondInterface");
@@ -168,7 +163,6 @@ public class TestImplementation : ITestInterface
 {
     public void TestMethod() { }
 }";
-            // Warning for non-public interface with OSInterface - spans the entire interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NonPublicInterface)
                 .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface");
@@ -193,7 +187,6 @@ namespace TestNamespace
         public void TestMethod() { }
     }
 }";
-            // Warning for non-public interface with OSInterface in namespace - spans the interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NonPublicInterface)
                 .WithSpan(4, 5, 8, 6)
                 .WithArguments("ITestInterface");
@@ -269,7 +262,7 @@ public interface ITestInterface
 }";
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.MissingImplementation)
-                .WithSpan(2, 1, 6, 2)  // Adjusted span
+                .WithSpan(2, 1, 6, 2)
                 .WithArguments("ITestInterface");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -289,7 +282,7 @@ namespace TestNamespace
 }";
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.MissingImplementation)
-                .WithSpan(4, 5, 8, 6)  // Adjusted span
+                .WithSpan(4, 5, 8, 6)
                 .WithArguments("ITestInterface");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -939,13 +932,11 @@ public struct TestStruct
 }";
             var expected = new[]
             {
-        // Warning for private field with OSStructureField - spans the field name
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.UnsupportedTypeMapping)
             .WithSpan(6, 16, 6, 21)
             .WithArguments("Value"),
 
-        // Warning for internal property with OSStructureField - spans the property name
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.UnsupportedTypeMapping)
             .WithSpan(9, 19, 9, 23)
@@ -1077,7 +1068,6 @@ public class TestImplementation : IThisExternalLibraryNameIsMuchTooLongAndExceed
 {
     public void Method() { }
 }";
-            // Warning for interface name too long (after removing 'I' prefix) - spans interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NameMaxLengthExceeded)
                 .WithSpan(2, 1, 6, 2)
@@ -1102,7 +1092,6 @@ public class TestImplementation : ITestInterface
 {
     public void Method() { }
 }";
-            // Warning for name starting with number - spans the interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NameBeginsWithNumbers)
                 .WithSpan(2, 1, 6, 2)
@@ -1128,7 +1117,6 @@ public class TestImplementation : ITestInterface
 {
     public void Method() { }
 }";
-            // Warning for invalid characters in name - spans the interface declaration
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.UnsupportedCharactersInName)
                 .WithSpan(2, 1, 6, 2)
@@ -1360,7 +1348,7 @@ using System.Collections.Generic;
 namespace Company.ExternalLibs.Data
 {
     [OSStructure]
-    public struct CustomStruct  // Changed to public to avoid compiler errors
+    public struct CustomStruct
     {
         internal int Value;  // Non-public field
         [OSStructureField]
@@ -1485,10 +1473,10 @@ namespace Company.ExternalLibs.Models
 namespace Company.ExternalLibs.Utils
 {
     [OSStructure]
-    public struct DuplicateStruct 
+    public struct DuplicateStruct   // Duplicate structure name
     { 
         public string Name; 
-    }  // Duplicate structure name
+    }
 }
 
 namespace Company.ExternalLibs.Interfaces
@@ -1503,7 +1491,7 @@ namespace Company.ExternalLibs.Interfaces
 
     public class DataProcessor : IDataProcessor
     {
-        public DataProcessor() { }  // Added public parameterless constructor
+        public DataProcessor() { }
         
         public List<ResultStruct> ProcessData(InputStruct data) 
         {
@@ -1513,7 +1501,7 @@ namespace Company.ExternalLibs.Interfaces
 }";
             var expected = new[]
             {
-        // Empty structure
+        // EmptyStructure
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.EmptyStructure)
             .WithSpan(7, 19, 7, 34)
@@ -1525,19 +1513,19 @@ namespace Company.ExternalLibs.Interfaces
             .WithSpan(31, 20, 31, 31)
             .WithArguments("StringValue"),
 
-        // Unsupported parameter type (InputStruct)
+        // UnsupportedParameterType
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.UnsupportedParameterType)
             .WithSpan(34, 28, 34, 39)
             .WithArguments("ResultStruct", "Company.ExternalLibs.Models.InputStruct"),
 
-        // Duplicate structure name
+        // DuplicateName
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.DuplicateName)
             .WithSpan(41, 19, 41, 34)
             .WithArguments("DuplicateStruct, DuplicateStruct", "DuplicateStruct"),
 
-        // Missing OSStructure decoration
+        // MissingStructureDecoration
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.MissingStructureDecoration)
             .WithSpan(54, 40, 54, 56)

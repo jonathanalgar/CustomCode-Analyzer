@@ -20,7 +20,7 @@ Although IntelliSense in your IDE guides the available SDK decorators and their 
 
 When you upload your project's built assembly to the ODC Portal, it does not have access to the underlying code—the ODC Portal checks compliance with the rules using the assembly's metadata.
 
-This extension, built from scratch, implements the rules using the rich code analysis APIs of [Roslyn](https://github.com/dotnet/roslyn), the .NET compiler.
+This component, built from scratch, implements the rules using the rich code analysis APIs of [Roslyn](https://github.com/dotnet/roslyn), the .NET compiler.
 
 ## How to use
 
@@ -36,7 +36,7 @@ Add the [NuGet package](https://www.nuget.org/packages/CustomCode.Analyzer/) as 
 
 ```dotnet add package CustomCode.Analyzer```
 
-If your project references the External Libraries SDK (`OutSystems.ExternalLibraries.SDK`), the component should automatically start providing feedback on your code.
+If your project references the External Libraries SDK (`OutSystems.ExternalLibraries.SDK`), the package should automatically start providing feedback on your code.
 
 > :bulb: Auto-updating extensions for Visual Studio Code and Rider are in the works.
 
@@ -49,6 +49,6 @@ If your project references the External Libraries SDK (`OutSystems.ExternalLibra
 
 ## Contributing
 
-Please report bugs and feature requests [here](https://github.com/jonathanalgar/CustomCode-Analyzer/issues).
+Please report bugs and feature requests [here](https://github.com/jonathanalgar/CustomCode-Analyzer/issues/new/choose).
 
-PRs are welcome. Code quality improvements, features (especially those in the TODO list) and documentation improvements are all welcome 🤗 All changes to Analyzer code should pass all existing tests (`dotnet test`) and all new features should  be comprehensively covered by new tests.
+PRs are welcome. Code quality improvements, features (especially those in the TODO list) and documentation improvements are all welcome 🤗 All changes to Analyzer code should pass all existing tests (`dotnet test`) and all new features should  be covered by new tests.
