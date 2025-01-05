@@ -1338,6 +1338,53 @@ public class Implementation : ITestInterface
 
         // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05029 - not implementing
 
+        // ----------------------------------------------- BEST PRACTICES
+
+        // --------------------- PotentialStatefulImplementationRule ---------------
+
+        [TestMethod]
+        public async Task PotentialStatefulImplementationRule_DetectsStaticState()
+        {
+            var test = @"
+using System.Collections.Generic;
+
+[OSInterface]
+public interface ICalculator 
+{
+    decimal Add(decimal a, decimal b);
+    int GetTotalCalculations();
+}
+
+public class Calculator : ICalculator 
+{
+    // Attempting to track state between calls
+    private static int _totalCalculations;
+    private static readonly List<decimal> _history = new();
+    public static decimal LastResult { get; private set; }
+    
+    public decimal Add(decimal a, decimal b) 
+    {
+        _totalCalculations++;
+        var result = a + b;
+        _history.Add(result);
+        LastResult = result;
+        return result;
+    }
+    
+    public int GetTotalCalculations() 
+    {
+        return _totalCalculations;
+    }
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.PotentialStatefulImplementation)
+                .WithSpan(11, 14, 11, 24)
+                .WithArguments("Calculator", "_history, _totalCalculations, LastResult");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+        }
+
         // ----------------------------------------------- MIXED TESTS!
         [TestMethod]
         public async Task ComplexScenario_MultipleNamingAndStructureIssues_ReportsWarnings()
