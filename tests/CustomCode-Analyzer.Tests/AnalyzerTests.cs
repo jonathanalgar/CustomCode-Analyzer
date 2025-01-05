@@ -1341,7 +1341,6 @@ public class Implementation : ITestInterface
         // ----------------------------------------------- BEST PRACTICES
 
         // --------------------- PotentialStatefulImplementationRule ---------------
-
         [TestMethod]
         public async Task PotentialStatefulImplementationRule_DetectsStaticState()
         {
@@ -1384,7 +1383,6 @@ public class Calculator : ICalculator
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-
         // ----------------------------------------------- MIXED TESTS!
         [TestMethod]
         public async Task ComplexScenario_MultipleNamingAndStructureIssues_ReportsWarnings()

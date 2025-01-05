@@ -303,7 +303,7 @@ namespace CustomCode_Analyzer
             defaultSeverity: DiagnosticSeverity.Info,
             isEnabledByDefault: true,
             description: "External libraries should be designed to be stateless. Consider passing state information as method parameters instead of storing it in fields.",
-            helpLinkUri: "https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#best-practices");
+            helpLinkUri: "https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#architecture");
 
         /// <summary>
         /// Returns the full set of DiagnosticDescriptors that this analyzer is capable of producing.
