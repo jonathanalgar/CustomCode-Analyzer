@@ -301,7 +301,7 @@ namespace CustomCode_Analyzer
             title: "Possible stateful behavior",
             messageFormat: "The class '{0}' contains static members ({1}) which could persist state between calls. External libraries should be designed to be stateless.",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Info,
+            defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description: "External libraries should be designed to be stateless. Consider passing state information as method parameters instead of storing it in fields.",
             helpLinkUri: "https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#architecture");
@@ -311,7 +311,7 @@ namespace CustomCode_Analyzer
             title: "Possible input size limit",
             messageFormat: "This method accepts binary data. Note that external libraries have a 5.5MB total input size limit. For large files, use a REST API endpoint or file URL instead.",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Info,
+            defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description: "External libraries have a 5.5MB total input size limit. For large binary files, expose them through a REST API endpoint in your app or provide a URL to download them.",
             helpLinkUri: "https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#use-with-large-binary-files");
