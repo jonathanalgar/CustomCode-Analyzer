@@ -14,11 +14,11 @@
 
 When you want to extend your ODC apps with custom C# code, you do so with the [External Libraries SDK](https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/). This SDK allows you to write C# code that you can call from your ODC apps.
 
-Although IntelliSense in your IDE guides the available SDK decorators and their syntax, it does not guide the rules you must follow (for example, on [naming](https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05019) and [design decisions](https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05018)). This guidance is provided when uploading your project's built assembly to the ODC Portal, where you get feedback on rule violations. **Using this component brings that feedback forward and gives you real-time feedback on compliance with the rules as you write the code.**
+Although IntelliSense in your IDE guides the available SDK decorators and their syntax, it does not guide the rules you must follow (for example, on [naming](https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05019) and [design decisions](https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05018)). This guidance is provided when uploading your project's built assembly to the ODC Portal, where you get feedback on rule violations. **Using this component brings that feedback forward and gives you real-time feedback on compliance with the rules as you write the code. You also get real-time guidance on best practices.**
 
 ### Technical Primer
 
-When you upload your project's built assembly to the ODC Portal, it does not have access to the underlying code—the ODC Portal checks compliance with the rules using the assembly's metadata.
+When you upload your project's built assembly to the ODC Portal, it does not have access to the underlying code—the ODC Portal checks compliance with the rules by reflecting on assembly's metadata.
 
 This component, built from scratch, implements the rules using the rich code analysis APIs of [Roslyn](https://github.com/dotnet/roslyn), the .NET compiler.
 
