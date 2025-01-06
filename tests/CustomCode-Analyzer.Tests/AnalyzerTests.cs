@@ -1383,6 +1383,35 @@ public class Calculator : ICalculator
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
+
+        // --------------------- InputSizeLimitRule --------------------------------
+        [TestMethod]
+        public async Task InputSizeLimitRule_ShowsInfo()
+        {
+            var test = @"
+namespace TestNamespace
+{
+    [OSInterface]
+    public interface IDocumentProcessor
+    {
+        void ProcessDocument(byte[] documentData);
+        void ProcessMetadata(string metadata);
+    }
+
+    public class DocumentProcessor : IDocumentProcessor
+    {
+        public void ProcessDocument(byte[] documentData) { }
+        public void ProcessMetadata(string metadata) { }
+    }
+}";
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.InputSizeLimit)
+                .WithSpan(7, 9, 7, 51);
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+        }
+        // -------------------------------------------------------------------------
+
         // ----------------------------------------------- MIXED TESTS!
         [TestMethod]
         public async Task ComplexScenario_MultipleNamingAndStructureIssues_ReportsWarnings()

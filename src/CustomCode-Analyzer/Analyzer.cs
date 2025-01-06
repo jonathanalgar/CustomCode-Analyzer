@@ -42,6 +42,7 @@ namespace CustomCode_Analyzer
             public const string UnsupportedParameterType = "UnsupportedParameterType";
             public const string UnsupportedDefaultValue = "UnsupportedDefaultValue";
             public const string PotentialStatefulImplementation = "PotentialStatefulImplementation";
+            public const string InputSizeLimit = "InputSizeLimit";
         }
 
         /// <summary>
@@ -305,6 +306,16 @@ namespace CustomCode_Analyzer
             description: "External libraries should be designed to be stateless. Consider passing state information as method parameters instead of storing it in fields.",
             helpLinkUri: "https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#architecture");
 
+        private static readonly DiagnosticDescriptor InputSizeLimitRule = new(
+            DiagnosticIds.InputSizeLimit,
+            title: "Possible input size limit",
+            messageFormat: "This method accepts binary data. Note that external libraries have a 5.5MB total input size limit. For large files, use a REST API endpoint or file URL instead.",
+            category: Categories.Design,
+            defaultSeverity: DiagnosticSeverity.Info,
+            isEnabledByDefault: true,
+            description: "External libraries have a 5.5MB total input size limit. For large binary files, expose them through a REST API endpoint in your app or provide a URL to download them.",
+            helpLinkUri: "https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#use-with-large-binary-files");
+
         /// <summary>
         /// Returns the full set of DiagnosticDescriptors that this analyzer is capable of producing.
         /// </summary>
@@ -332,7 +343,8 @@ namespace CustomCode_Analyzer
                 MissingStructureDecorationRule,
                 UnsupportedParameterTypeRule,
                 UnsupportedDefaultValueRule,
-                PotentialStatefulImplementationRule);
+                PotentialStatefulImplementationRule,
+                InputSizeLimitRule);
 
         /// <summary>
         /// Entry point for the analyzer. Initializes analysis by setting up compilation-level
@@ -704,6 +716,16 @@ namespace CustomCode_Analyzer
                                     parameter.Name,
                                     methodSymbol.Name));
                         }
+                    }
+
+                    // Check for potential input size limit issues
+                    if (parameter.Type is IArrayTypeSymbol arrayType && arrayType.ElementType.SpecialType == SpecialType.System_Byte)
+                    {
+                        context.ReportDiagnostic(
+                            Diagnostic.Create(
+                                InputSizeLimitRule,
+                                methodSyntax.GetLocation()));
+                        break;
                     }
 
                     // Check if the default value is valid (compile-time constant and supported type)
