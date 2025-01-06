@@ -41,6 +41,7 @@ namespace CustomCode_Analyzer
             public const string MissingStructureDecoration = "MissingStructureDecoration";
             public const string UnsupportedParameterType = "UnsupportedParameterType";
             public const string UnsupportedDefaultValue = "UnsupportedDefaultValue";
+            public const string PotentialStatefulImplementation = "PotentialStatefulImplementation";
         }
 
         /// <summary>
@@ -292,6 +293,18 @@ namespace CustomCode_Analyzer
 
         // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05029 - not implementing
 
+        // ----------------------------------------------- BEST PRACTICES
+
+        private static readonly DiagnosticDescriptor PotentialStatefulImplementationRule = new(
+            DiagnosticIds.PotentialStatefulImplementation,
+            title: "Possible stateful behavior",
+            messageFormat: "The class '{0}' contains static members ({1}) which could persist state between calls. External libraries should be designed to be stateless.",
+            category: Categories.Design,
+            defaultSeverity: DiagnosticSeverity.Info,
+            isEnabledByDefault: true,
+            description: "External libraries should be designed to be stateless. Consider passing state information as method parameters instead of storing it in fields.",
+            helpLinkUri: "https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#architecture");
+
         /// <summary>
         /// Returns the full set of DiagnosticDescriptors that this analyzer is capable of producing.
         /// </summary>
@@ -318,7 +331,8 @@ namespace CustomCode_Analyzer
                 UnsupportedTypeMappingRule,
                 MissingStructureDecorationRule,
                 UnsupportedParameterTypeRule,
-                UnsupportedDefaultValueRule);
+                UnsupportedDefaultValueRule,
+                PotentialStatefulImplementationRule);
 
         /// <summary>
         /// Entry point for the analyzer. Initializes analysis by setting up compilation-level
@@ -776,6 +790,27 @@ namespace CustomCode_Analyzer
                                 NonInstantiableInterfaceRule,
                                 ctorDecl.Identifier.GetLocation(),
                                 typeSymbol.Name));
+                    }
+
+                    // Check for static members that could indicate attempts to maintain state
+                    var staticMembers = typeSymbol.GetMembers()
+                        .Where(member =>
+                            member.IsStatic &&
+                            !member.IsImplicitlyDeclared && // Skip compiler-generated members
+                            member is IFieldSymbol { IsConst: false } or IPropertySymbol)
+                        .Select(m => m.Name)
+                        .OrderBy(name => name)
+                        .ToList();
+
+                    if (staticMembers.Any() &&
+                        typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ClassDeclarationSyntax stateDecl)
+                    {
+                        context.ReportDiagnostic(
+                            Diagnostic.Create(
+                                PotentialStatefulImplementationRule,
+                                stateDecl.Identifier.GetLocation(),
+                                typeSymbol.Name,
+                                string.Join(", ", staticMembers)));
                     }
                 }
             }
