@@ -421,9 +421,7 @@ namespace CustomCode_Analyzer
         private void AnalyzeStruct(SymbolAnalysisContext context, INamedTypeSymbol typeSymbol)
         {
             // Check if the struct has the OSStructure attribute
-            bool hasOSStructureAttribute = typeSymbol.GetAttributes()
-                .Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure");
-
+            bool hasOSStructureAttribute = HasAttribute(typeSymbol, OSStructureAttributeNames);
             if (!hasOSStructureAttribute) return;
 
             // Retrieve the actual syntax node for reporting precise locations
@@ -472,8 +470,7 @@ namespace CustomCode_Analyzer
                 }
 
                 // Check if the member has the OSStructureField attribute
-                var hasOSStructureField = member.GetAttributes()
-                    .Any(a => a.AttributeClass?.Name is "OSStructureFieldAttribute" or "OSStructureField");
+                bool hasOSStructureField = HasAttribute(member, OSStructureFieldAttributeNames);
 
                 // If the member is decorated with OSStructureField but not public, report a diagnostic
                 if (hasOSStructureField && !member.DeclaredAccessibility.HasFlag(Accessibility.Public))
@@ -520,8 +517,7 @@ namespace CustomCode_Analyzer
                 }
 
                 // Check if the member has the OSIgnore attribute
-                var hasOSIgnore = member.GetAttributes()
-                    .Any(a => a.AttributeClass?.Name is "OSIgnoreAttribute" or "OSIgnore");
+                bool hasOSIgnore = HasAttribute(member, OSIgnoreAttributeNames);
 
                 // If the member is decorated with OSIgnore but not public, report a diagnostic
                 if (hasOSIgnore && !member.DeclaredAccessibility.HasFlag(Accessibility.Public))
@@ -576,8 +572,7 @@ namespace CustomCode_Analyzer
             ConcurrentDictionary<string, (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)> osInterfaces)
         {
             // Check if the interface has the OSInterface attribute
-            var osInterfaceAttr = typeSymbol.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
+            var osInterfaceAttr = GetAttribute(typeSymbol, OSInterfaceAttributeNames);
             if (osInterfaceAttr == null) return;
 
             var syntaxRef = typeSymbol.DeclaringSyntaxReferences.FirstOrDefault();
@@ -675,15 +670,12 @@ namespace CustomCode_Analyzer
             var containingType = methodSymbol.ContainingType;
 
             // Determine if the method is in an OSInterface or in a class that implements one
-            var hasOSInterfaceAttribute = containingType.GetAttributes()
-                .Any(a => a.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
+            var hasOSInterfaceAttribute = HasAttribute(containingType, OSInterfaceAttributeNames);
 
             bool implementsOSInterface = false;
             if (!hasOSInterfaceAttribute)
             {
-                implementsOSInterface = containingType.Interfaces
-                    .Any(i => i.GetAttributes()
-                        .Any(a => a.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface"));
+                implementsOSInterface = containingType.Interfaces.Any(i => HasAttribute(i, OSInterfaceAttributeNames));
             }
 
             // If this method is part of the OSInterface or an implementation of it, check for underscores
@@ -746,7 +738,7 @@ namespace CustomCode_Analyzer
                         context.Compilation,
                         t => !t.DeclaringSyntaxReferences.IsEmpty &&
                              t.TypeKind == TypeKind.Struct &&
-                             !t.GetAttributes().Any(attr => attr.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure"));
+                             !HasAttribute(t, OSStructureAttributeNames));
 
                     // Determine if any structure type used in the parameter is not decorated with OSStructure
                     bool usesUndecoratedStruct = allStructuresNotExposed.Any(s =>
@@ -785,8 +777,7 @@ namespace CustomCode_Analyzer
             // Check each interface implemented by this class to see if it has [OSInterface]
             foreach (var implementedInterface in typeSymbol.Interfaces)
             {
-                var hasOSInterfaceAttribute = implementedInterface.GetAttributes()
-                    .Any(a => a.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
+                bool hasOSInterfaceAttribute = HasAttribute(implementedInterface, OSInterfaceAttributeNames);
 
                 if (hasOSInterfaceAttribute)
                 {
@@ -921,8 +912,7 @@ namespace CustomCode_Analyzer
             // Check for duplicate struct names across the compilation
             var allStructures = GetAllTypesInCompilation(
                 context.Compilation,
-                t => t.TypeKind == TypeKind.Struct &&
-                     t.GetAttributes().Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure"));
+                t => t.TypeKind == TypeKind.Struct && HasAttribute(t, OSStructureAttributeNames));
 
 #pragma warning disable RS1024
             var duplicates = allStructures.GroupBy(x => x.Name).Where(g => g.Count() > 1);
@@ -943,6 +933,61 @@ namespace CustomCode_Analyzer
                         structNames,
                         duplicate.Key));
             }
+        }
+
+
+        /// <summary>
+        /// Valid names for the OSInterface attribute.
+        /// </summary>
+        private static readonly HashSet<string> OSInterfaceAttributeNames = new()
+        {
+            "OSInterfaceAttribute",
+            "OSInterface"
+        };
+
+        /// <summary>
+        /// Valid names for the OSStructure attribute.
+        /// </summary>
+        private static readonly HashSet<string> OSStructureAttributeNames = new()
+        {
+            "OSStructureAttribute",
+            "OSStructure"
+        };
+
+        /// <summary>
+        /// Valid names for the OSStructureField attribute.
+        /// </summary>
+        private static readonly HashSet<string> OSStructureFieldAttributeNames = new()
+        {
+            "OSStructureFieldAttribute",
+            "OSStructureField"
+        };
+
+        /// <summary>
+        /// Valid names for the OSIgnore attribute.
+        /// </summary>
+        private static readonly HashSet<string> OSIgnoreAttributeNames = new()
+        {
+            "OSIgnoreAttribute",
+            "OSIgnore"
+        };
+
+        /// <summary>
+        /// Contains valid names for OSIgnore attribute, used to mark fields that should be ignored during serialization.
+        /// </summary>
+        private static bool HasAttribute(ISymbol symbol, HashSet<string> attributeNames)
+        {
+            return symbol.GetAttributes()
+                .Any(attr => attributeNames.Contains(attr.AttributeClass?.Name));
+        }
+
+        /// <summary>
+        /// Checks if a symbol has any of the specified attributes from the provided set of names.
+        /// </summary>
+        private static AttributeData GetAttribute(ISymbol symbol, HashSet<string> attributeNames)
+        {
+            return symbol.GetAttributes()
+                .FirstOrDefault(attr => attributeNames.Contains(attr.AttributeClass?.Name));
         }
 
         /// <summary>
@@ -1058,8 +1103,8 @@ namespace CustomCode_Analyzer
                 return true;
             }
             // Check if the type is a struct with [OSStructure]
-            if (typeSymbol.TypeKind == TypeKind.Struct &&
-                typeSymbol.GetAttributes().Any(a => a.AttributeClass?.Name is "OSStructureAttribute" or "OSStructure"))
+            if (typeSymbol.TypeKind == TypeKind.Struct && HasAttribute(typeSymbol, OSStructureAttributeNames))
+
             {
                 return true;
             }
