@@ -1023,18 +1023,16 @@ namespace CustomCode_Analyzer
         /// A set of valid parameter types for <see cref="UnsupportedDefaultValueRule"/>.
         /// Anything not in this set (and is not null for reference types) is considered invalid.
         /// </summary>
-        private static readonly HashSet<string> ValidParameterTypes = new()
-        {
-            "String",
-            "Int32",
-            "Int64",
-            "Single",
-            "Double",
-            "Decimal",
-            "Boolean",
-            "DateTime",
-            "Byte[]"
-        };
+        private static readonly ImmutableHashSet<SpecialType> ValidParameterSpecialTypes = ImmutableHashSet.Create(
+           SpecialType.System_String,
+           SpecialType.System_Int32,
+           SpecialType.System_Int64,
+           SpecialType.System_Single,
+           SpecialType.System_Double,
+           SpecialType.System_Decimal,
+           SpecialType.System_Boolean,
+           SpecialType.System_DateTime
+        );
 
         /// <summary>
         /// Checks whether a parameter's default value is a compile-time constant of a supported type.
@@ -1051,8 +1049,11 @@ namespace CustomCode_Analyzer
             {
                 return true;
             }
-            // Check if the type is in the set of valid parameter types
-            if (!ValidParameterTypes.Contains(parameter.Type.Name))
+
+            // Check if type is supported
+            if (!ValidParameterSpecialTypes.Contains(parameter.Type.SpecialType) &&
+                !(parameter.Type is IArrayTypeSymbol arrayType &&
+                  arrayType.ElementType.SpecialType == SpecialType.System_Byte))
             {
                 return false;
             }
@@ -1084,30 +1085,26 @@ namespace CustomCode_Analyzer
             {
                 return false;
             }
+
             // Check for primitive or special types
-            if (typeSymbol.SpecialType is
-                SpecialType.System_String or
-                SpecialType.System_Int32 or
-                SpecialType.System_Int64 or
-                SpecialType.System_Boolean or
-                SpecialType.System_Decimal or
-                SpecialType.System_Single or
-                SpecialType.System_Double or
-                SpecialType.System_DateTime)
+            if (ValidParameterSpecialTypes.Contains(typeSymbol.SpecialType))
             {
                 return true;
             }
+
             // Check if the type is a byte array
             if (typeSymbol is IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Byte })
             {
                 return true;
             }
-            // Check if the type is a struct with [OSStructure]
-            if (typeSymbol.TypeKind == TypeKind.Struct && HasAttribute(typeSymbol, OSStructureAttributeNames))
 
+            // Check if the type is a struct with [OSStructure]
+            if (typeSymbol is INamedTypeSymbol { TypeKind: TypeKind.Struct } structType &&
+                HasAttribute(structType, OSStructureAttributeNames))
             {
                 return true;
             }
+
             // Check if the type is a generic type that implements IEnumerable
             if (typeSymbol is INamedTypeSymbol { IsGenericType: true } namedTypeSymbol &&
                 namedTypeSymbol.AllInterfaces.Any(i => i.ToDisplayString() == "System.Collections.IEnumerable"))
@@ -1115,6 +1112,7 @@ namespace CustomCode_Analyzer
                 var typeArg = namedTypeSymbol.TypeArguments.FirstOrDefault();
                 return typeArg != null && IsValidParameterType(typeArg, compilation);
             }
+
             // If none match, it's not a supported parameter type
             return false;
         }
