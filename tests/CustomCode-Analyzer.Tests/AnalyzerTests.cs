@@ -40,6 +40,7 @@ namespace TestNamespace
                 .WithSpan(4, 5, 7, 6);
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
+        }
 
         // --------------- ManyInterfacesRule (OS-ELG-MODL-05003) ------------------ 
         [TestMethod]
