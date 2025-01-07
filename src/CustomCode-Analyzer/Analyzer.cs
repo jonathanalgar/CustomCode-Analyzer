@@ -41,6 +41,7 @@ namespace CustomCode_Analyzer
             public const string MissingStructureDecoration = "MissingStructureDecoration";
             public const string UnsupportedParameterType = "UnsupportedParameterType";
             public const string UnsupportedDefaultValue = "UnsupportedDefaultValue";
+            public const string IconResourceNotFound = "IconResourceNotFound";
         }
 
         /// <summary>
@@ -132,7 +133,15 @@ namespace CustomCode_Analyzer
             customTags: WellKnownDiagnosticTags.CompilationEnd,
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05008");
 
-        // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05009 - not implementing
+        private static readonly DiagnosticDescriptor IconResourceNotFoundRule = new(
+            DiagnosticIds.IconResourceNotFound,
+            title: "Icon resource not found",
+            messageFormat: "The resource name '{0}' provided for the element '{1}' IconResourceName was not found",
+            category: Categories.Design,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "The IconResourceName must be the name of an available embedded resource element in the project.",
+            helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05009");
 
         private static readonly DiagnosticDescriptor NonPublicStructRule = new(
             DiagnosticIds.NonPublicStruct,
@@ -318,7 +327,8 @@ namespace CustomCode_Analyzer
                 UnsupportedTypeMappingRule,
                 MissingStructureDecorationRule,
                 UnsupportedParameterTypeRule,
-                UnsupportedDefaultValueRule);
+                UnsupportedDefaultValueRule,
+                IconResourceNotFoundRule);
 
         /// <summary>
         /// Entry point for the analyzer. Initializes analysis by setting up compilation-level
@@ -552,6 +562,7 @@ namespace CustomCode_Analyzer
             // Check if the interface has the OSInterface attribute
             var osInterfaceAttr = typeSymbol.GetAttributes()
                 .FirstOrDefault(a => a.AttributeClass?.Name is "OSInterfaceAttribute" or "OSInterface");
+
             if (osInterfaceAttr == null) return;
 
             var syntaxRef = typeSymbol.DeclaringSyntaxReferences.FirstOrDefault();
@@ -624,6 +635,44 @@ namespace CustomCode_Analyzer
                         syntax.GetLocation(),
                         libraryName,
                         string.Join(", ", invalidChars)));
+            }
+
+            // Check for attribute named 'IconResourceName'
+            var iconArg = osInterfaceAttr.NamedArguments
+                .FirstOrDefault(na => na.Key == "IconResourceName");
+
+            if (iconArg.Key != null && iconArg.Value.Value is string iconName)
+            {
+                // Gather all "AssemblyMetadata" attributes that indicate embedded resources.
+
+                var embeddedResources = context.Compilation.Assembly
+                    .GetAttributes()
+                    .Where(attr => attr.AttributeClass?.Name == "AssemblyMetadataAttribute" &&
+                                   attr.ConstructorArguments.Length == 2 &&
+                                   attr.ConstructorArguments[0].Value?.ToString() == "EmbeddedResource")
+                    .Select(attr => attr.ConstructorArguments[1].Value?.ToString())
+                    .Where(name => name != null)
+                    .ToImmutableHashSet();
+
+                // Check if icon exists
+                if (!embeddedResources.Contains(iconName))
+                {
+                    if (osInterfaceAttr.ApplicationSyntaxReference?.GetSyntax() is AttributeSyntax attrSyntax)
+                    {
+                        var iconArgSyntax = attrSyntax.ArgumentList?.Arguments
+                            .FirstOrDefault(arg => arg.NameEquals?.Name.Identifier.Text == "IconResourceName");
+
+                        if (iconArgSyntax != null)
+                        {
+                            context.ReportDiagnostic(
+                                Diagnostic.Create(
+                                    IconResourceNotFoundRule,
+                                    iconArgSyntax.GetLocation(),
+                                    iconName,
+                                    typeSymbol.Name));
+                        }
+                    }
+                }
             }
 
             // The interface must be public

@@ -431,7 +431,61 @@ namespace Second
         }
         // -------------------------------------------------------------------------
 
-        // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05009 - not implementing
+        // --------------- IconResourceNotFoundRule (OS-ELG-MODL-05009) ------------
+        [TestMethod]
+        public async Task IconResourceNotFoundRule_Found_NoWarning()
+        {
+            var test = @"
+namespace MyNamespace
+{
+    [OSInterface(IconResourceName = ""MyNamespace.MyLibraryIcon.png"")]
+    public interface ITestInterface 
+    {
+        void TestMethod();
+    }
+
+    public class TestImplementation : ITestInterface
+    {
+        public void TestMethod() { }
+    }
+}";
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
+        }
+
+
+        [TestMethod]
+        public async Task IconResourceNotFoundRule_NotFound_ReportsWarning()
+        {
+            var test = @"
+namespace MyNamespace
+{
+    [OSInterface(IconResourceName = ""NonExistentIcon.png"")]
+    public interface ITestInterface 
+    {
+        void TestMethod();
+    }
+
+    public class TestImplementation : ITestInterface
+    {
+        public void TestMethod() { }
+    }
+}";
+
+            var expected = CSharpAnalyzerVerifier<Analyzer>
+                .Diagnostic(DiagnosticIds.IconResourceNotFound)
+                .WithSpan(4, 18, 4, 58)
+                .WithArguments("NonExistentIcon.png", "ITestInterface");
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(
+                test,
+                TestContext,
+                skipSDKreference: false,
+                expected);
+        }
+        // -------------------------------------------------------------------------
+
+
 
         // --------------- NonPublicStructRule (OS-ELG-MODL-05010) -----------------
         [TestMethod]

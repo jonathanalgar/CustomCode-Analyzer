@@ -21,11 +21,22 @@ namespace CustomCode_Analyzer.Tests
             if (!skipSDKreference)
             {
                 source = @"using System;using OutSystems.ExternalLibraries.SDK;" + source;
-                
             }
-
             var logger = new DetailedTestLogger(testContext);
-            var test = new Test(logger, skipSDKreference) { TestCode = source };
+            var test = new Test(logger, skipSDKreference)
+            {
+                TestCode = source,
+                TestState =
+        {
+            Sources =
+            {
+// Emulate a real embedded resource name in the assembly
+("AssemblyInfo.cs", @"
+using System.Reflection;
+[assembly: AssemblyMetadataAttribute(""EmbeddedResource"", ""MyNamespace.MyLibraryIcon.png"")]")
+            }
+        }
+            };
 
             logger.WriteLine($"Running test: {testContext.TestName}");
             logger.WriteLine("\nAnalyzing source code:");
@@ -56,7 +67,7 @@ namespace CustomCode_Analyzer.Tests
                 _logger = logger;
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net80;
 
-                if(!skipSDKreference)
+                if (!skipSDKreference)
                 {
                     ReferenceAssemblies = ReferenceAssemblies.WithPackages([new PackageIdentity("OutSystems.ExternalLibraries.SDK", "1.5.0")]);
                 }
