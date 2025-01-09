@@ -18,9 +18,17 @@ Although IntelliSense in your IDE guides the available SDK decorators and their 
 
 ### Technical Primer
 
-When you upload your project's built assembly to the ODC Portal, it does not have access to the underlying code—the ODC Portal checks compliance with the rules by reflecting on assembly's metadata.
+When you upload your project's built assembly to the ODC Portal, it does not have access to the underlying code—the ODC Portal checks compliance with the rules by reflecting on the assembly's metadata.
 
 This component, built from scratch, implements the rules using the rich code analysis APIs of [Roslyn](https://github.com/dotnet/roslyn), the .NET compiler.
+
+#### Analyzer phases
+
+The analyzer operates in two distinct phases, registered through the Roslyn `AnalysisContext`:
+
+1. **Symbol analysis phase** – Triggered by `RegisterSymbolAction`, this phase performs immediate syntax and semantic analysis on individual declarations as you type. For example, when you declare a method, the analyzer instantly checks if its name starts with an underscore and reports a violation if it does (`NameBeginsWithUnderscoresRule`). These diagnostics appear immediately in your IDE's Problems window.
+
+2. **Compilation end phase** – Registered via `RegisterCompilationEndAction`, this phase runs after all symbols have been processed and the semantic model is complete. For example, it ensures exactly one `[OSInterface]` exists across your entire codebase by maintaining a `ConcurrentDictionary` of interface declarations and validating their uniqueness (`NoSingleInterfaceRule` or `ManyInterfacesRule`). These diagnostics may appear with a slight delay as they require complete semantic analysis.
 
 ## How to use
 
@@ -28,15 +36,29 @@ This component, built from scratch, implements the rules using the rich code ana
 
 You can use the auto-updating extension from the Visual Studio Marketplace. Simply [install the extension from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=JonathanAlgar.CustomCodeAnalyzer).
 
-If your project references the External Libraries SDK (`OutSystems.ExternalLibraries.SDK`), the extension should automatically start providing feedback on your code.
+If your project references the External Libraries SDK (`OutSystems.ExternalLibraries.SDK`), the extension should automatically start providing feedback on your code. 
+
+To ensure real-time feedback for [compilation end phase](#analyzer-phases) rules (not just during builds), you need to configure your Visual Studio's background analysis:
+
+1. Select **Tools** > **Options**. 
+1. From the left menu select **C#** > **Advanced**. 
+1. Set both **Run background code analysis** for and **Show compiler errors and warnings** to **Entire solution**.
+1. Make sure the **Run code analysis in separate process box** is unchecked. 
 
 ### Others
 
 Add the [NuGet package](https://www.nuget.org/packages/CustomCode.Analyzer/) as a dev dependency to your ODC external libraries project:
 
-```dotnet add package CustomCode.Analyzer```
+    dotnet add package CustomCode.Analyzer
 
 If your project references the External Libraries SDK (`OutSystems.ExternalLibraries.SDK`), the package should automatically start providing feedback on your code.
+
+#### Visual Studio Code
+
+To ensure real-time feedback for [compilation end phase](#analyzer-phases) rules (not just during builds), you need to configure your Visual Studio Code's background analysis:
+
+1. Open the command palette (_Ctrl+Shift+P_).
+1. Search for "roslyn". Set the **Dotnet › Background Analysis: Analyzer Diagnostics Scope** to **fullSolution**.
 
 > :bulb: Auto-updating extensions for Visual Studio Code and Rider are in the works.
 
