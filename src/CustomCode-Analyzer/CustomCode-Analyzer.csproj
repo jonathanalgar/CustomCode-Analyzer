@@ -22,7 +22,7 @@
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 		<DevelopmentDependency>true</DevelopmentDependency>
 		<NoPackageAnalysis>true</NoPackageAnalysis>
-		<NoWarn>RS2008, RS1037</NoWarn>
+		<NoWarn>RS2008</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>
