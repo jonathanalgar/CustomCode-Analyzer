@@ -8,6 +8,8 @@ namespace CustomCode_Analyzer.Tests
     {
         public TestContext TestContext { get; set; } = null!;
 
+        // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05001 - not implementing
+
         // --------------- NoSingleInterfaceRule (OS-ELG-MODL-05002) --------------- 
         [TestMethod]
         public async Task NoSingleInterfaceRule_InGlobalScope_ReportsWarning()
@@ -39,7 +41,6 @@ namespace TestNamespace
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- ManyInterfacesRule (OS-ELG-MODL-05003) ------------------ 
         [TestMethod]
@@ -146,7 +147,6 @@ namespace Second
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- NonPublicInterfaceRule (OS-ELG-MODL-05004) -------------- 
         [TestMethod]
@@ -193,7 +193,6 @@ namespace TestNamespace
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- NonInstantiableInterfaceRule (OS-ELG-MODL-05005) --------
         [TestMethod]
@@ -248,7 +247,6 @@ namespace TestNamespace
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- MissingImplementationRule (OS-ELG-MODL-05006) -----------
         [TestMethod]
@@ -288,7 +286,6 @@ namespace TestNamespace
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
 
-        // -------------------------------------------------------------------------
 
         // --------------- EmptyInterfaceRule (OS-ELG-MODL-05007) ------------------
         [TestMethod]
@@ -337,7 +334,6 @@ namespace TestNamespace
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- ManyImplementationRule (OS-ELG-MODL-05008) --------------
         [TestMethod]
@@ -429,7 +425,6 @@ namespace Second
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05009 - not implementing
 
@@ -470,7 +465,6 @@ namespace TestNamespace
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- NonPublicStructureFieldRule (OS-ELG-MODL-05011) ------------
         [TestMethod]
@@ -537,7 +531,6 @@ namespace TestNamespace
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- NonPublicIgnoredFieldRule (OS-ELG-MODL-05012) -----------
         [TestMethod]
@@ -606,7 +599,6 @@ namespace TestNamespace
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- EmptyStructureRule (OS-ELG-MODL-05013) -----------
         [TestMethod]
@@ -649,7 +641,6 @@ namespace TestNamespace
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05014 - TODO: implement
 
@@ -814,7 +805,6 @@ public struct UnsupportedType { }
 ";
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- ParameterByReferenceRule (OS-ELG-MODL-05016) ------------
         [TestMethod]
@@ -902,7 +892,6 @@ namespace Implementation
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- UnsupportedTypeMappingRule (OS-ELG-MODL-05017) ----------
         [TestMethod]
@@ -945,7 +934,6 @@ public struct TestStruct
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- MissingPublicImplementationRule (OS-ELG-MODL-05018) --------
         [TestMethod]
@@ -999,7 +987,6 @@ namespace Implementation
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- NameMaxLengthExceededRule (OS-ELG-MODL-05019) -----------
         [TestMethod]
@@ -1075,7 +1062,6 @@ public class TestImplementation : IThisExternalLibraryNameIsMuchTooLongAndExceed
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- NameBeginsWithNumbersRule (OS-ELG-MODL-05020) -----------
         [TestMethod]
@@ -1099,8 +1085,6 @@ public class TestImplementation : ITestInterface
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
-
 
         // --------------- UnsupportedCharactersInNameRule (OS-ELG-MODL-05021) -----
         [TestMethod]
@@ -1124,7 +1108,6 @@ public class TestImplementation : ITestInterface
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- NameBeginsWithUnderscoresRule (OS-ELG-MODL-05022) -------
         [TestMethod]
@@ -1189,7 +1172,6 @@ namespace Implementation
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05023 - not implementing
 
@@ -1227,7 +1209,6 @@ public struct MyStruct { }
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- DuplicateNameRule (OS-ELG-MODL-05025) -------------------
         [TestMethod]
@@ -1261,7 +1242,6 @@ namespace Second
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // --------------- UnsupportedDefaultValueRule (OS-ELG-MODL-05026) ---------
         [TestMethod]
@@ -1330,7 +1310,6 @@ public class Implementation : ITestInterface
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05027 - not implementing
 
@@ -1410,7 +1389,6 @@ namespace TestNamespace
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
-        // -------------------------------------------------------------------------
 
         // ----------------------------------------------- MIXED TESTS!
         [TestMethod]
@@ -1609,7 +1587,6 @@ namespace Company.ExternalLibs.Interfaces
         }
 
         // ----------------------------------------------- OTHER TESTS!
-
         [TestMethod]
         public async Task AnalyzerRules_Disabled_IfSDKNotAvailable()
         {
@@ -1629,7 +1606,6 @@ namespace Company.ExternalLibs.Interfaces
 ";
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: true);
         }
-
 
         [TestMethod]
         public async Task ValidImplementation_DeeperNamespace_NoWarning()
