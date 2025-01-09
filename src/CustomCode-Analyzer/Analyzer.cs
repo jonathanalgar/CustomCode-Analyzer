@@ -68,7 +68,7 @@ namespace CustomCode_Analyzer
             title: "Missing OSInterface declaration",
             messageFormat: "No OSInterface found - exactly one interface must be decorated with [OSInterface]",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             customTags: WellKnownDiagnosticTags.CompilationEnd,
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05002");
@@ -78,7 +78,7 @@ namespace CustomCode_Analyzer
             title: "Multiple OSInterface declarations",
             messageFormat: "Multiple OSInterface attributes found: {0} - only one interface should have this attribute",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             customTags: WellKnownDiagnosticTags.CompilationEnd,
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05003");
@@ -88,7 +88,7 @@ namespace CustomCode_Analyzer
             title: "Non-public OSInterface",
             messageFormat: "The OSInterface '{0}' must be public",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05004");
 
@@ -97,7 +97,7 @@ namespace CustomCode_Analyzer
             title: "Non-instantiable interface",
             messageFormat: "The interface decorated with OSInterface is implemented by class '{0}' which doesn't have a public parameterless constructor",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Each class implementing an OSInterface-decorated interface must have a public parameterless constructor.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05005");
@@ -107,7 +107,7 @@ namespace CustomCode_Analyzer
             title: "Missing implementation",
             messageFormat: "No class implementing the interface decorated with OSInterface '{0}' found in your file",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Each interface decorated with OSInterface must have an implementing class.",
             customTags: WellKnownDiagnosticTags.CompilationEnd,
@@ -118,7 +118,7 @@ namespace CustomCode_Analyzer
             title: "Empty interface",
             messageFormat: "No methods found in the interface decorated with OSInterface '{0}'",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "The interface decorated with OSInterface must define at least one method.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05007");
@@ -128,7 +128,7 @@ namespace CustomCode_Analyzer
             title: "Many implementation",
             messageFormat: "The interface decorated with OSInterface '{0}' is implemented by multiple classes: {1}",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Only one class should implement an interface decorated with OSInterface.",
             customTags: WellKnownDiagnosticTags.CompilationEnd,
@@ -141,7 +141,7 @@ namespace CustomCode_Analyzer
             title: "Non-public OSStructure",
             messageFormat: "The struct decorated with OSStructure '{0}' is not public",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Structs decorated with OSStructure must be public.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05010");
@@ -151,7 +151,7 @@ namespace CustomCode_Analyzer
             title: "Non-public OSStructureField",
             messageFormat: "The property/field decorated by OSStructureField '{0}' in struct {1} is not public",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Properties and fields decorated with OSStructureField must be public.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05011");
@@ -161,7 +161,7 @@ namespace CustomCode_Analyzer
             title: "Non-public field ignored",
             messageFormat: "The property/field decorated by OSIgnore '{0}' in struct '{1}' is not public",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Properties and fields decorated with OSIgnore must be public.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05012");
@@ -171,7 +171,7 @@ namespace CustomCode_Analyzer
             title: "Empty structure",
             messageFormat: "No public properties/fields found in the struct decorated with OSStructure '{0}'",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Structs decorated with OSStructure must have at least one public property or field.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05013");
@@ -183,7 +183,7 @@ namespace CustomCode_Analyzer
             title: "Unsupported parameter type in OSStructure",
             messageFormat: "The struct decorated with OSStructure '{0}' contains a public property/field that uses an unsupported parameter type '{1}'",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Public properties or fields in structs decorated with OSStructure must use supported types.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05015");
@@ -193,7 +193,7 @@ namespace CustomCode_Analyzer
             title: "Unsupported ref parameter",
             messageFormat: "The parameter '{0}' in action '{1}' is passed by reference. Passing parameters by reference is not supported.",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Parameters in actions must be passed by value. Return modified values instead of using reference parameters.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05016");
@@ -203,7 +203,7 @@ namespace CustomCode_Analyzer
             title: "Unsupported type mapping",
             messageFormat: "{0} has an incompatible DataType assigned and cannot be converted",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "The DataType assigned to a property or field is incompatible with its corresponding .NET type. It can't be automatically converted to the specified OutSystems type..",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05017");
@@ -213,7 +213,7 @@ namespace CustomCode_Analyzer
             title: "Missing public implementation",
             messageFormat: "The class that implements the interface decorated with OSInterface '{0}' must be public",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Classes implementing interfaces decorated with OSInterface must be public.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05018");
@@ -223,7 +223,7 @@ namespace CustomCode_Analyzer
             title: "Name exceeds maximum length",
             messageFormat: "The name '{0}' is not supported as it has more than 50 characters",
             category: Categories.Naming,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Names must not exceed 50 characters in length.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05019");
@@ -233,7 +233,7 @@ namespace CustomCode_Analyzer
             title: "Name begins with numbers",
             messageFormat: "The name '{0}' is not supported as it begins with a number",
             category: Categories.Naming,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Names must not begin with a number. Use a letter as the first character.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05020");
@@ -243,7 +243,7 @@ namespace CustomCode_Analyzer
             title: "Unsupported characters in a name",
             messageFormat: "The name '{0}' is not supported as it has the following invalid characters '{1}'",
             category: Categories.Naming,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Names must only contain letters, numbers, and underscores.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05021");
@@ -253,7 +253,7 @@ namespace CustomCode_Analyzer
             title: "Name begins with underscores",
             messageFormat: "The {0} name '{1}' should not begin with underscores",
             category: Categories.Naming,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05022");
 
@@ -264,7 +264,7 @@ namespace CustomCode_Analyzer
             title: "Missing structure decoration",
             messageFormat: "The struct '{0}' used as '{1}' is missing OSStructure decoration",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05024");
 
@@ -273,7 +273,7 @@ namespace CustomCode_Analyzer
             title: "Duplicated name",
             messageFormat: "More than one object with name '{0}' was found",
             category: Categories.Naming,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             customTags: WellKnownDiagnosticTags.CompilationEnd,
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05025");
@@ -283,7 +283,7 @@ namespace CustomCode_Analyzer
             title: "Unsupported default value",
             messageFormat: "The default value specified for {0} is unsupported",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "Default values for parameters must be compile-time constants of supported types.",
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05026");
