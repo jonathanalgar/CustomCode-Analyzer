@@ -1191,7 +1191,7 @@ namespace CustomCode_Analyzer
         /// the OutSystems DataType specified in [OSStructureField(DataType = ...)].
         /// Returns <c>true</c> if the mapping is incompatible.
         /// </summary>
-        private bool HasIncompatibleDataTypeMapping(ITypeSymbol type, TypedConstant dataType)
+        private static bool HasIncompatibleDataTypeMapping(ITypeSymbol type, TypedConstant dataType)
         {
             if (type == null)
             {
