@@ -719,12 +719,17 @@ namespace CustomCode_Analyzer
             if ((hasOSInterfaceAttribute || implementsOSInterface) &&
                 methodSymbol.Name.StartsWith("_", StringComparison.Ordinal))
             {
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        NameBeginsWithUnderscoresRule,
-                        methodSyntax.GetLocation(),
-                        "Method",
-                        methodSymbol.Name));
+                if (syntaxRef.GetSyntax() is MethodDeclarationSyntax methodDeclSyntax)
+                {
+                    var identifierLocation = methodDeclSyntax.Identifier.GetLocation();
+
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            NameBeginsWithUnderscoresRule,
+                            identifierLocation,
+                            "Method",
+                            methodSymbol.Name));
+                }
             }
 
             // Only check for by-ref parameters in the OSInterface itself (not the implementation)
@@ -987,18 +992,15 @@ namespace CustomCode_Analyzer
 
             foreach (var duplicate in duplicates)
             {
-                // Get the first struct (ordered by name) for consistent error reporting
-                var firstStruct = duplicate.OrderBy(d => d.Name).First();
-
-                // Create a comma-separated list of struct names that share the same name
-                var structNames = string.Join(", ", duplicate.Select(d => d.Name).OrderBy(n => n));
-
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        DuplicateNameRule,
-                        firstStruct.Locations.First(),
-                        structNames,
-                        duplicate.Key));
+                // Report diagnostic for each duplicate instance
+                foreach (var struct_ in duplicate)
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            DuplicateNameRule,
+                            struct_.Locations.First(),
+                            duplicate.Key));
+                }
             }
         }
 

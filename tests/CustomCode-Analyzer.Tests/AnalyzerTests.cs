@@ -1169,11 +1169,11 @@ public class TestImplementation : ITestInterface
             var expected = new[]
             {
         CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-            .WithSpan(5, 5, 5, 24)
+            .WithSpan(5, 10, 5, 21)
             .WithArguments("Method", "_TestMethod"),
 
         CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-            .WithSpan(10, 5, 10, 34)
+            .WithSpan(10, 17, 10, 28)
             .WithArguments("Method", "_TestMethod")
     };
 
@@ -1203,11 +1203,11 @@ namespace Implementation
             var expected = new[]
             {
         CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-            .WithSpan(7, 9, 7, 28)
+            .WithSpan(7, 14, 7, 25)
             .WithArguments("Method", "_TestMethod"),
 
         CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-            .WithSpan(15, 9, 15, 38)
+            .WithSpan(15, 21, 15, 32)
             .WithArguments("Method", "_TestMethod")
     };
 
@@ -1277,8 +1277,12 @@ namespace Second
             {
                 CSharpAnalyzerVerifier<Analyzer>
                     .Diagnostic(DiagnosticIds.DuplicateName)
+                    .WithSpan(5, 19, 5, 28)
+                    .WithArguments("Structure"),
+                CSharpAnalyzerVerifier<Analyzer>
+                    .Diagnostic(DiagnosticIds.DuplicateName)
                     .WithSpan(14, 19, 14, 28)
-                    .WithArguments("Structure, Structure", "Structure"),
+                    .WithArguments("Structure")
             };
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -1504,7 +1508,7 @@ namespace Company.ExternalLibs.Core
         // NameBeginsWithUnderscores (interface)
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-            .WithSpan(25, 9, 25, 46)
+            .WithSpan(25, 14, 25, 26)
             .WithArguments("Method", "_ProcessData"),
 
         // NonInstantiableInterface
@@ -1516,7 +1520,7 @@ namespace Company.ExternalLibs.Core
         // NameBeginsWithUnderscores (implementation)
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-            .WithSpan(37, 9, 37, 56)
+            .WithSpan(37, 21, 37, 33)
             .WithArguments("Method", "_ProcessData")
     };
 
@@ -1615,8 +1619,13 @@ namespace Company.ExternalLibs.Interfaces
         // DuplicateName
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.DuplicateName)
+            .WithSpan(10, 19, 10, 34)
+            .WithArguments("DuplicateStruct"),
+
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.DuplicateName)
             .WithSpan(41, 19, 41, 34)
-            .WithArguments("DuplicateStruct, DuplicateStruct", "DuplicateStruct"),
+            .WithArguments("DuplicateStruct"),
 
         // MissingStructureDecoration
         CSharpAnalyzerVerifier<Analyzer>
