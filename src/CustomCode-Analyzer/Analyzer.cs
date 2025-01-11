@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -134,7 +135,8 @@ namespace CustomCode_Analyzer
             customTags: WellKnownDiagnosticTags.CompilationEnd,
             helpLinkUri: "https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05008");
 
-        // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05009 - not implementing
+        // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05009 - not possible to implement
+        // (see https://github.com/jonathanalgar/CustomCode-Analyzer/issues/11)
 
         private static readonly DiagnosticDescriptor NonPublicStructRule = new(
             DiagnosticIds.NonPublicStruct,
@@ -544,14 +546,19 @@ namespace CustomCode_Analyzer
                         IPropertySymbol p => p.Type,
                         _ => null
                     };
-
                     // If the type is not valid, report the unsupported parameter type
                     if (memberType != null && !IsValidParameterType(memberType, context.Compilation))
                     {
-                        // Get the location of the member's type
-                        var loc = member.DeclaringSyntaxReferences.First().GetSyntax().GetLocation();
+                        // Get the location based on whether it's a field or property
+                        Location loc = member switch
+                        {
+                            IFieldSymbol _ when member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
+                                is VariableDeclaratorSyntax fieldSyntax => fieldSyntax.Identifier.GetLocation(),
+                            IPropertySymbol _ when member.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
+                                is PropertyDeclarationSyntax propSyntax => propSyntax.Identifier.GetLocation(),
+                            _ => member.DeclaringSyntaxReferences.First().GetSyntax().GetLocation()
+                        };
 
-                        // Report diagnostic if the parameter type is unsupported
                         context.ReportDiagnostic(
                             Diagnostic.Create(
                                 UnsupportedParameterTypeRule,
@@ -594,11 +601,22 @@ namespace CustomCode_Analyzer
 
             // Extract library name from attribute or interface name
             string libraryName = null;
+            Location nameLocation = null;
+
             // First, check the 'Name' property
             var nameArg = osInterfaceAttr.NamedArguments.FirstOrDefault(na => na.Key == "Name");
             if (nameArg.Key != null && nameArg.Value.Value is string specifiedName)
             {
                 libraryName = specifiedName;
+                // Get the location from the attribute argument syntax
+                var attrSyntax = osInterfaceAttr.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax;
+                var nameArgSyntax = attrSyntax?.ArgumentList?.Arguments
+                    .FirstOrDefault(arg => arg.NameEquals?.Name.Identifier.ValueText == "Name")
+                    ?.Expression as LiteralExpressionSyntax;
+                if (nameArgSyntax != null)
+                {
+                    nameLocation = nameArgSyntax.GetLocation();
+                }
             }
             else
             {
@@ -607,12 +625,26 @@ namespace CustomCode_Analyzer
                 if (originalNameArg.Key != null && originalNameArg.Value.Value is string originalName)
                 {
                     libraryName = originalName;
+                    // Get the location from the attribute argument syntax
+                    var attrSyntax = osInterfaceAttr.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax;
+                    var originalNameArgSyntax = attrSyntax?.ArgumentList?.Arguments
+                        .FirstOrDefault(arg => arg.NameEquals?.Name.Identifier.ValueText == "OriginalName")
+                        ?.Expression as LiteralExpressionSyntax;
+                    if (originalNameArgSyntax != null)
+                    {
+                        nameLocation = originalNameArgSyntax.GetLocation();
+                    }
                 }
             }
+
             // If no name specified in attributes, use the interface name without 'I' prefix
-            libraryName ??= (typeSymbol.Name.StartsWith("I", StringComparison.Ordinal))
-                ? typeSymbol.Name.Substring(1)
-                : typeSymbol.Name;
+            if (libraryName == null)
+            {
+                libraryName = (typeSymbol.Name.StartsWith("I", StringComparison.Ordinal))
+                    ? typeSymbol.Name.Substring(1)
+                    : typeSymbol.Name;
+                nameLocation = syntax.Identifier.GetLocation();
+            }
 
             // Validate name constraints
             if (libraryName.Length > 50)
@@ -621,7 +653,7 @@ namespace CustomCode_Analyzer
                 context.ReportDiagnostic(
                     Diagnostic.Create(
                         NameMaxLengthExceededRule,
-                        syntax.GetLocation(),
+                        nameLocation ?? syntax.GetLocation(), // Fall back to full syntax if we couldn't get specific location
                         libraryName));
             }
 
@@ -631,7 +663,7 @@ namespace CustomCode_Analyzer
                 context.ReportDiagnostic(
                     Diagnostic.Create(
                         NameBeginsWithNumbersRule,
-                        syntax.GetLocation(),
+                        nameLocation ?? syntax.GetLocation(),
                         libraryName));
             }
 
@@ -642,7 +674,7 @@ namespace CustomCode_Analyzer
                 context.ReportDiagnostic(
                     Diagnostic.Create(
                         UnsupportedCharactersInNameRule,
-                        syntax.GetLocation(),
+                        nameLocation ?? syntax.GetLocation(),
                         libraryName,
                         string.Join(", ", invalidChars)));
             }
@@ -653,7 +685,12 @@ namespace CustomCode_Analyzer
                 context.ReportDiagnostic(
                     Diagnostic.Create(
                         NonPublicInterfaceRule,
-                        syntax.GetLocation(),
+                        Location.Create(
+                            syntax.SyntaxTree,
+                            TextSpan.FromBounds(
+                                syntax.Keyword.SpanStart,
+                                syntax.Identifier.Span.End
+                            )),
                         typeSymbol.Name));
             }
         }
@@ -682,12 +719,17 @@ namespace CustomCode_Analyzer
             if ((hasOSInterfaceAttribute || implementsOSInterface) &&
                 methodSymbol.Name.StartsWith("_", StringComparison.Ordinal))
             {
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        NameBeginsWithUnderscoresRule,
-                        methodSyntax.GetLocation(),
-                        "Method",
-                        methodSymbol.Name));
+                if (syntaxRef.GetSyntax() is MethodDeclarationSyntax methodDeclSyntax)
+                {
+                    var identifierLocation = methodDeclSyntax.Identifier.GetLocation();
+
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            NameBeginsWithUnderscoresRule,
+                            identifierLocation,
+                            "Method",
+                            methodSymbol.Name));
+                }
             }
 
             // Only check for by-ref parameters in the OSInterface itself (not the implementation)
@@ -785,11 +827,32 @@ namespace CustomCode_Analyzer
                     if (!typeSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public) &&
                         typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() is ClassDeclarationSyntax clsDecl)
                     {
-                        context.ReportDiagnostic(
-                            Diagnostic.Create(
-                                MissingPublicImplementationRule,
-                                clsDecl.Identifier.GetLocation(),
-                                implementedInterface.Name));
+                        if (clsDecl.Modifiers.Any())
+                        {
+                            // Start from first modifier (internal) and go through the class name
+                            context.ReportDiagnostic(
+                                Diagnostic.Create(
+                                    MissingPublicImplementationRule,
+                                    Location.Create(
+                                        clsDecl.SyntaxTree,
+                                        TextSpan.FromBounds(
+                                            clsDecl.Modifiers.First().SpanStart,
+                                            clsDecl.Identifier.Span.End)),
+                                    implementedInterface.Name));
+                        }
+                        else
+                        {
+                            // If no modifiers, start from class keyword through the class name
+                            context.ReportDiagnostic(
+                                Diagnostic.Create(
+                                    MissingPublicImplementationRule,
+                                    Location.Create(
+                                        clsDecl.SyntaxTree,
+                                        TextSpan.FromBounds(
+                                            clsDecl.Keyword.SpanStart,
+                                            clsDecl.Identifier.Span.End)),
+                                    implementedInterface.Name));
+                        }
                     }
 
                     // Must have a public parameterless constructor
@@ -855,7 +918,7 @@ namespace CustomCode_Analyzer
                     context.ReportDiagnostic(
                         Diagnostic.Create(
                             NoSingleInterfaceRule,
-                            ifDecl.GetLocation()));
+                            ifDecl.Identifier.GetLocation()));
                 }
             }
             else if (osInterfaces.Count > 1)
@@ -869,8 +932,14 @@ namespace CustomCode_Analyzer
                 // Create a comma-separated list of interface names
                 var interfaceNames = string.Join(", ", osInterfaces.Keys.OrderBy(n => n));
                 // Report diagnostic indicating multiple OSInterfaces
-                context.ReportDiagnostic(
-                    Diagnostic.Create(ManyInterfacesRule, firstSyntax.GetLocation(), interfaceNames));
+                foreach (var osInterface in osInterfaces.Values)
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            ManyInterfacesRule,
+                            osInterface.Syntax.Identifier.GetLocation(),
+                            interfaceNames));
+                }
             }
             else
             {
@@ -890,7 +959,7 @@ namespace CustomCode_Analyzer
                     context.ReportDiagnostic(
                         Diagnostic.Create(
                             MissingImplementationRule,
-                            syntax.GetLocation(),
+                            syntax.Identifier.GetLocation(),
                             symbol.Name));
                 }
                 else if (implementations.Count > 1)
@@ -899,13 +968,16 @@ namespace CustomCode_Analyzer
                     var implNames = string.Join(", ",
                         implementations.Select(i => i.Name).OrderBy(n => n));
 
-                    // Report diagnostic indicating multiple implementations
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            ManyImplementationRule,
-                            syntax.GetLocation(),
-                            symbol.Name,
-                            implNames));
+                    // Report diagnostics indicating multiple implementations
+                    foreach (var implementingClass in implementations)
+                    {
+                        context.ReportDiagnostic(
+                            Diagnostic.Create(
+                                ManyImplementationRule,
+                                implementingClass.Locations.First(), // Location of each implementing class
+                                symbol.Name,
+                                implNames));
+                    }
                 }
             }
 
@@ -920,18 +992,15 @@ namespace CustomCode_Analyzer
 
             foreach (var duplicate in duplicates)
             {
-                // Get the first struct (ordered by name) for consistent error reporting
-                var firstStruct = duplicate.OrderBy(d => d.Name).First();
-
-                // Create a comma-separated list of struct names that share the same name
-                var structNames = string.Join(", ", duplicate.Select(d => d.Name).OrderBy(n => n));
-
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        DuplicateNameRule,
-                        firstStruct.Locations.First(),
-                        structNames,
-                        duplicate.Key));
+                // Report diagnostic for each duplicate instance
+                foreach (var struct_ in duplicate)
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            DuplicateNameRule,
+                            struct_.Locations.First(),
+                            duplicate.Key));
+                }
             }
         }
 

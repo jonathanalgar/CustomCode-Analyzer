@@ -20,7 +20,7 @@ public interface ITestInterface
     void TestMethod();
 }";
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoSingleInterface)
-                .WithSpan(2, 1, 5, 2);
+                .WithSpan(2, 18, 2, 32);
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
@@ -37,7 +37,7 @@ namespace TestNamespace
     }
 }";
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NoSingleInterface)
-                .WithSpan(4, 5, 7, 6);
+                .WithSpan(4, 22, 4, 36);
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
@@ -68,9 +68,15 @@ public class SecondImplementation : ISecondInterface
 {
     public void TestMethod() { }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
-                .WithSpan(2, 1, 6, 2)
-                .WithArguments("IFirstInterface, ISecondInterface");
+
+            var expected = new[] {
+        CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
+            .WithSpan(3, 18, 3, 33)
+            .WithArguments("IFirstInterface, ISecondInterface"),
+        CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
+            .WithSpan(9, 18, 9, 34)
+            .WithArguments("IFirstInterface, ISecondInterface")
+    };
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
@@ -78,7 +84,6 @@ public class SecondImplementation : ISecondInterface
         [TestMethod]
         public async Task ManyInterfacesRule_InSingleNamespace_ReportsWarning()
         {
-
             var test = @"
 namespace MyNamespace
 {
@@ -104,11 +109,19 @@ namespace MyNamespace
         public void TestMethod() { }
     }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
-                .WithSpan(4, 5, 8, 6)
-                .WithArguments("IFirstInterface, ISecondInterface");
+
+            var expected = new[] {
+        CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
+            .WithSpan(5, 22, 5, 37)
+            .WithArguments("IFirstInterface, ISecondInterface"),
+        CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
+            .WithSpan(11, 22, 11, 38)
+            .WithArguments("IFirstInterface, ISecondInterface")
+    };
+
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
+
 
         [TestMethod]
         public async Task MultipleOSInterfaces_InDifferentNamespaces_ReportsWarning()
@@ -141,9 +154,15 @@ namespace Second
         public void TestMethod() { }
     }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
-                .WithSpan(4, 5, 8, 6)
-                .WithArguments("IFirstInterface, ISecondInterface");
+
+            var expected = new[] {
+        CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
+            .WithSpan(5, 22, 5, 37)
+            .WithArguments("IFirstInterface, ISecondInterface"),
+        CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.ManyInterfaces)
+            .WithSpan(19, 22, 19, 38)
+            .WithArguments("IFirstInterface, ISecondInterface")
+    };
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
@@ -164,7 +183,7 @@ public class TestImplementation : ITestInterface
     public void TestMethod() { }
 }";
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NonPublicInterface)
-                .WithSpan(2, 1, 6, 2)
+                .WithSpan(3, 1, 3, 25)
                 .WithArguments("ITestInterface");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -188,11 +207,12 @@ namespace TestNamespace
     }
 }";
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NonPublicInterface)
-                .WithSpan(4, 5, 8, 6)
+                .WithSpan(5, 5, 5, 29)
                 .WithArguments("ITestInterface");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
+
 
         // --------------- NonInstantiableInterfaceRule (OS-ELG-MODL-05005) --------
         [TestMethod]
@@ -260,7 +280,7 @@ public interface ITestInterface
 }";
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.MissingImplementation)
-                .WithSpan(2, 1, 6, 2)
+                .WithSpan(3, 18, 3, 32)
                 .WithArguments("ITestInterface");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -280,7 +300,7 @@ namespace TestNamespace
 }";
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.MissingImplementation)
-                .WithSpan(4, 5, 8, 6)
+                .WithSpan(5, 22, 5, 36)
                 .WithArguments("ITestInterface");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -299,7 +319,7 @@ public interface ITestInterface
             var expected = new[] {
             CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.MissingImplementation)
-                .WithSpan(2, 1, 5, 2)
+                .WithSpan(3, 18, 3, 32)
                 .WithArguments("ITestInterface"),
             CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.EmptyInterface)
@@ -324,7 +344,7 @@ namespace TestNamespace
             var expected = new[] {
             CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.MissingImplementation)
-                .WithSpan(4, 5, 7, 6)
+                .WithSpan(5, 22, 5, 36)
                 .WithArguments("ITestInterface"),
             CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.EmptyInterface)
@@ -355,10 +375,17 @@ public class SecondImplementation : ITestInterface
 {
    public void TestMethod() { }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.ManyImplementation)
-                .WithSpan(2, 1, 6, 2)
-                .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation");
+
+            var expected = new[] {
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.ManyImplementation)
+            .WithSpan(8, 14, 8, 33)
+            .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation"),
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.ManyImplementation)
+            .WithSpan(13, 14, 13, 34)
+            .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation")
+    };
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
@@ -385,10 +412,17 @@ namespace TestNamespace
        public void TestMethod() { }
    }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.ManyImplementation)
-                .WithSpan(4, 4, 8, 5)
-                .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation");
+
+            var expected = new[] {
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.ManyImplementation)
+            .WithSpan(10, 17, 10, 36)
+            .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation"),
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.ManyImplementation)
+            .WithSpan(15, 17, 15, 37)
+            .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation")
+    };
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
@@ -418,10 +452,17 @@ namespace Second
        public void TestMethod() { }
    }
 }";
-            var expected = CSharpAnalyzerVerifier<Analyzer>
-                .Diagnostic(DiagnosticIds.ManyImplementation)
-                .WithSpan(4, 4, 8, 5)
-                .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation");
+
+            var expected = new[] {
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.ManyImplementation)
+            .WithSpan(10, 17, 10, 36)
+            .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation"),
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.ManyImplementation)
+            .WithSpan(18, 17, 18, 37)
+            .WithArguments("ITestInterface", "FirstImplementation, SecondImplementation")
+    };
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
         }
@@ -680,7 +721,7 @@ public struct MyStructure
 public struct UnsupportedType { }
 ";
             var expected = CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.UnsupportedParameterType)
-                .WithSpan(6, 5, 6, 61)
+                .WithSpan(6, 28, 6, 47)
                 .WithArguments("MyStructure", "UnsupportedType");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -953,7 +994,7 @@ internal class TestImplementation : ITestInterface
 
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.MissingPublicImplementation)
-                .WithSpan(8, 16, 8, 34)
+                .WithSpan(8, 1, 8, 34)
                 .WithArguments("ITestInterface");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -982,7 +1023,7 @@ namespace Implementation
 
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.MissingPublicImplementation)
-                .WithSpan(13, 20, 13, 38)
+                .WithSpan(13, 5, 13, 38)
                 .WithArguments("ITestInterface");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -1006,7 +1047,7 @@ public class TestImplementation : ITestInterface
 
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NameMaxLengthExceeded)
-                .WithSpan(2, 1, 6, 2)
+                .WithSpan(2, 21, 2, 101)
                 .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -1035,7 +1076,7 @@ namespace Implementation
 
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NameMaxLengthExceeded)
-                .WithSpan(4, 5, 8, 6)
+                .WithSpan(4, 25, 4, 105)
                 .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -1057,7 +1098,7 @@ public class TestImplementation : IThisExternalLibraryNameIsMuchTooLongAndExceed
 }";
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NameMaxLengthExceeded)
-                .WithSpan(2, 1, 6, 2)
+                .WithSpan(3, 18, 3, 97)
                 .WithArguments("ThisExternalLibraryNameIsMuchTooLongAndExceedsFiftyCharactersWhichIsNotAllowed");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -1080,7 +1121,7 @@ public class TestImplementation : ITestInterface
 }";
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.NameBeginsWithNumbers)
-                .WithSpan(2, 1, 6, 2)
+                .WithSpan(2, 21, 2, 33)
                 .WithArguments("123Service");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -1103,7 +1144,7 @@ public class TestImplementation : ITestInterface
 }";
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.UnsupportedCharactersInName)
-                .WithSpan(2, 1, 6, 2)
+                .WithSpan(2, 21, 2, 39)
                 .WithArguments("Invalid*Name@123", "*, @");
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -1128,11 +1169,11 @@ public class TestImplementation : ITestInterface
             var expected = new[]
             {
         CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-            .WithSpan(5, 5, 5, 24)
+            .WithSpan(5, 10, 5, 21)
             .WithArguments("Method", "_TestMethod"),
 
         CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-            .WithSpan(10, 5, 10, 34)
+            .WithSpan(10, 17, 10, 28)
             .WithArguments("Method", "_TestMethod")
     };
 
@@ -1162,11 +1203,11 @@ namespace Implementation
             var expected = new[]
             {
         CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-            .WithSpan(7, 9, 7, 28)
+            .WithSpan(7, 14, 7, 25)
             .WithArguments("Method", "_TestMethod"),
 
         CSharpAnalyzerVerifier<Analyzer>.Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-            .WithSpan(15, 9, 15, 38)
+            .WithSpan(15, 21, 15, 32)
             .WithArguments("Method", "_TestMethod")
     };
 
@@ -1236,8 +1277,12 @@ namespace Second
             {
                 CSharpAnalyzerVerifier<Analyzer>
                     .Diagnostic(DiagnosticIds.DuplicateName)
+                    .WithSpan(5, 19, 5, 28)
+                    .WithArguments("Structure"),
+                CSharpAnalyzerVerifier<Analyzer>
+                    .Diagnostic(DiagnosticIds.DuplicateName)
                     .WithSpan(14, 19, 14, 28)
-                    .WithArguments("Structure, Structure", "Structure"),
+                    .WithArguments("Structure")
             };
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(test, TestContext, skipSDKreference: false, expected);
@@ -1451,19 +1496,19 @@ namespace Company.ExternalLibs.Core
         // NameBeginsWithNumbers
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NameBeginsWithNumbers)
-            .WithSpan(22, 5, 26, 6)
+            .WithSpan(22, 25, 22, 43)
             .WithArguments("123_Invalid*Name"),
 
         // UnsupportedCharactersInName
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.UnsupportedCharactersInName)
-            .WithSpan(22, 5, 26, 6)
+            .WithSpan(22, 25, 22, 43)
             .WithArguments("123_Invalid*Name", "*"),
 
         // NameBeginsWithUnderscores (interface)
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-            .WithSpan(25, 9, 25, 46)
+            .WithSpan(25, 14, 25, 26)
             .WithArguments("Method", "_ProcessData"),
 
         // NonInstantiableInterface
@@ -1475,7 +1520,7 @@ namespace Company.ExternalLibs.Core
         // NameBeginsWithUnderscores (implementation)
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.NameBeginsWithUnderscore)
-            .WithSpan(37, 9, 37, 56)
+            .WithSpan(37, 21, 37, 33)
             .WithArguments("Method", "_ProcessData")
     };
 
@@ -1574,8 +1619,13 @@ namespace Company.ExternalLibs.Interfaces
         // DuplicateName
         CSharpAnalyzerVerifier<Analyzer>
             .Diagnostic(DiagnosticIds.DuplicateName)
+            .WithSpan(10, 19, 10, 34)
+            .WithArguments("DuplicateStruct"),
+
+        CSharpAnalyzerVerifier<Analyzer>
+            .Diagnostic(DiagnosticIds.DuplicateName)
             .WithSpan(41, 19, 41, 34)
-            .WithArguments("DuplicateStruct, DuplicateStruct", "DuplicateStruct"),
+            .WithArguments("DuplicateStruct"),
 
         // MissingStructureDecoration
         CSharpAnalyzerVerifier<Analyzer>
