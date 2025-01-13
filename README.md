@@ -31,11 +31,11 @@ graph TB
     end
 
     subgraph Roslyn["🛠 Roslyn"]
-        ast["Generates AST and semantic model"]:::roslyn
+        ast["Generates AST<br/>and semantic model"]:::roslyn
     end
 
     subgraph CustomCode_Analyzer["🔍 CustomCode-Analyzer"]
-        analysis["Code analysis and fix provider"]:::analyzerArea
+        analysis["Code analysis<br/>and fix provider"]:::analyzerArea
     end
 
     subgraph IDE["🖥 IDE"]
