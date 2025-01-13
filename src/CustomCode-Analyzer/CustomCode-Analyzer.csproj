@@ -8,9 +8,9 @@
 		<LangVersion>latest</LangVersion>
 		<RootNamespace>CustomCode_Analyzer</RootNamespace>
 		<PackageId>CustomCode.Analyzer</PackageId>
-		<Version>0.1.4</Version>
-		<AssemblyVersion>0.1.4</AssemblyVersion>
-		<FileVersion>0.1.4</FileVersion>
+		<Version>0.2.0</Version>
+		<AssemblyVersion>0.2.0</AssemblyVersion>
+		<FileVersion>0.2.0</FileVersion>
 		<Authors>Jonathan Algar</Authors>
 		<Product>OutSystems Developer Cloud (ODC) Custom Code Analyzer</Product>
 		<Description>Get feedback on your OutSytems Developer Cloud (ODC) custom C# code as you code.</Description>

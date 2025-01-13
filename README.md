@@ -8,10 +8,9 @@
 
 > :information_source: This component is unofficial and unsupported by OutSystems.
 
-![Screenshot of Visual Studio Code displaying C# code with highlighted errors in the Problems panel, showing naming and mapping rule violations detected by a the ODC Custom Code Analyzer.](https://github.com/jonathanalgar/CustomCode-Analyzer/blob/main/screenshot.png?raw=true)
+![](https://github.com/jonathanalgar/CustomCode-Analyzer/blob/main/screenshot.png?raw=true)
 
-⚡ The screenshot shows the development of an ODC External Library in Visual Studio Code. The **ODC Custom Code Analyzer** flags several rule violations in the Problems panel, and a Quick Fix menu is open for one issue, offering to "Fix this type mapping" so the field correctly matches its `OSDataType.PhoneNumber`.
-
+⚡ _Screenshot showing the development of an ODC External Library in Visual Studio Code. The **ODC Custom Code Analyzer** flags several rule violations in the Problems panel. A related Quick Fix menu is open for one rule violation, offering to "Fix this type mapping" so the field correctly matches its `OSDataType.PhoneNumber`._ ⚡ 
 
 ## Overview
 
@@ -27,19 +26,19 @@ This component, built from scratch, implements the rules using the rich code ana
 
 ```mermaid
 graph TB
-    subgraph User
-        code["Types code"]:::userArea
+    subgraph User["👩‍💻 User"]
+        code["Writes code"]:::userArea
     end
 
-    subgraph Roslyn["Roslyn"]
+    subgraph Roslyn["🛠 Roslyn"]
         ast["Generates AST and semantic model"]:::roslyn
     end
 
-    subgraph CustomCode_Analyzer
+    subgraph CustomCode_Analyzer["🔍 CustomCode-Analyzer"]
         analysis["Code analysis and fix provider"]:::analyzerArea
     end
 
-    subgraph IDE
+    subgraph IDE["🖥 IDE"]
         display["Displays diagnosis and fixes"]:::ideArea
     end
 
@@ -48,7 +47,7 @@ graph TB
     analysis --> display
     display --> code
 
-    Roslyn -."built using".-> CustomCode_Analyzer
+    Roslyn -."using Roslyn APIs".-> CustomCode_Analyzer
 ```
 
 #### Code analysis phases
@@ -102,7 +101,7 @@ Add the [NuGet package](https://www.nuget.org/packages/CustomCode.Analyzer/) as 
 
 If your project references the External Libraries SDK (`OutSystems.ExternalLibraries.SDK`), the package should automatically start providing feedback on your code.
 
-Automatic updating of the NuGet package is not supported, so be sure to periodically check for updates to get the latest features.
+The NuGet package cannot be automatically updated, so be sure to update regularlrly to get the latest features.
 
 #### Visual Studio Code
 
