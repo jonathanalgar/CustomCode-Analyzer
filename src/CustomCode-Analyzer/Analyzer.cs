@@ -7,6 +7,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
+using OutSystems.ExternalLibraries.SDK;
+using static CustomCode_Analyzer.AttributeNames;
 
 namespace CustomCode_Analyzer
 {
@@ -1218,42 +1220,6 @@ namespace CustomCode_Analyzer
         }
 
         /// <summary>
-        /// Valid names for the OSInterface attribute.
-        /// </summary>
-        private static readonly HashSet<string> OSInterfaceAttributeNames = new()
-        {
-            "OSInterfaceAttribute",
-            "OSInterface",
-        };
-
-        /// <summary>
-        /// Valid names for the OSStructure attribute.
-        /// </summary>
-        private static readonly HashSet<string> OSStructureAttributeNames = new()
-        {
-            "OSStructureAttribute",
-            "OSStructure",
-        };
-
-        /// <summary>
-        /// Valid names for the OSStructureField attribute.
-        /// </summary>
-        private static readonly HashSet<string> OSStructureFieldAttributeNames = new()
-        {
-            "OSStructureFieldAttribute",
-            "OSStructureField",
-        };
-
-        /// <summary>
-        /// Valid names for the OSIgnore attribute.
-        /// </summary>
-        private static readonly HashSet<string> OSIgnoreAttributeNames = new()
-        {
-            "OSIgnoreAttribute",
-            "OSIgnore",
-        };
-
-        /// <summary>
         /// Contains valid names for OSIgnore attribute, used to mark fields that should be ignored during serialization.
         /// </summary>
         private static bool HasAttribute(ISymbol symbol, HashSet<string> attributeNames)
@@ -1419,26 +1385,29 @@ namespace CustomCode_Analyzer
         /// </summary>
         private static bool HasIncompatibleDataTypeMapping(ITypeSymbol type, TypedConstant dataType)
         {
-            if (type is null)
-            {
+            if (type is null || dataType.Value is null)
                 return false;
-            }
-            return dataType.Value switch
+
+            // Convert the numeric underlying value to the OSDataType enum *name*,
+            var numericValue = (int)dataType.Value;
+            var enumName = Enum.GetName(typeof(OSDataType), numericValue);
+
+            // If we can't map the numeric value to a valid OSDataType name
+            if (string.IsNullOrEmpty(enumName))
             {
-                1 => !type.Name.Equals("String", StringComparison.OrdinalIgnoreCase), // Text
-                2 => !type.Name.Equals("Int32", StringComparison.OrdinalIgnoreCase), // Integer
-                3 => !type.Name.Equals("Int64", StringComparison.OrdinalIgnoreCase), // LongInteger
-                4 => !type.Name.Equals("Decimal", StringComparison.OrdinalIgnoreCase), // Decimal
-                5 => !type.Name.Equals("Boolean", StringComparison.OrdinalIgnoreCase), // Boolean
-                6 => !type.Name.Equals("DateTime", StringComparison.OrdinalIgnoreCase), // DateTime
-                7 => !type.Name.Equals("DateTime", StringComparison.OrdinalIgnoreCase), // Date
-                8 => !type.Name.Equals("DateTime", StringComparison.OrdinalIgnoreCase), // Time
-                9 => !type.Name.Equals("String", StringComparison.OrdinalIgnoreCase), // PhoneNumber
-                10 => !type.Name.Equals("String", StringComparison.OrdinalIgnoreCase), // Email
-                11 => !type.Name.Equals("Byte[]", StringComparison.OrdinalIgnoreCase), // BinaryData
-                12 => !type.Name.Equals("Decimal", StringComparison.OrdinalIgnoreCase), // Currency
-                _ => true,
-            };
+                return true;
+            }
+
+            // Now ask TypeMappingHelper for the expected .NET type name
+            if (!TypeMappingHelper.TryGetDotNetTypeName(enumName, out var expectedDotNetType))
+            {
+                // If we have no known mapping, treat as mismatch
+                return true;
+            }
+
+            // Finally, compare the actual .NET type name with the expected
+            // .NET type name from TypeMappingHelper
+            return !type.Name.Equals(expectedDotNetType, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Editing;
+using static CustomCode_Analyzer.AttributeNames;
 
 namespace CustomCode_Analyzer
 {
@@ -428,9 +429,8 @@ namespace CustomCode_Analyzer
             var osStructureFieldAttr = attributeLists
                 .SelectMany(list => list.Attributes)
                 .FirstOrDefault(attr =>
-                    attr.Name.ToString() is "OSStructureField" or "OSStructureFieldAttribute"
+                    OSStructureFieldAttributeNames.Contains(attr.Name.ToString())
                 );
-
             if (osStructureFieldAttr?.ArgumentList is null)
                 return document;
 
@@ -440,11 +440,17 @@ namespace CustomCode_Analyzer
             if (dataTypeArg?.Expression is not MemberAccessExpressionSyntax memberAccessExpr)
                 return document;
 
-            // Get the .NET type that aligns with the specified 'OSDataType' (for example "Text" -> "string").
-            var suggestedType = GetSuggestedType(memberAccessExpr.Name.Identifier.Text);
-            if (string.IsNullOrEmpty(suggestedType))
-                return document;
+            // This is the textual enum name
+            var dataTypeName = memberAccessExpr.Name.Identifier.Text;
 
+            // Use our shared TypeMappingHelper to get the suggested C# alias
+            if (!TypeMappingHelper.TryGetAliasTypeName(dataTypeName, out var suggestedType))
+            {
+                // If we don't have a known mapping, we can't fix it automatically
+                return document;
+            }
+
+            // Now replace the old type if needed
             if (memberDecl is VariableDeclarationSyntax varDeclSyntax)
             {
                 var currentTypeNode = varDeclSyntax.Type;
