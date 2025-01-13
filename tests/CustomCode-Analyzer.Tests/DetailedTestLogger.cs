@@ -1,5 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Text;
+﻿using System.Text;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Xunit.Abstractions;
 
 namespace CustomCode_Analyzer.Tests

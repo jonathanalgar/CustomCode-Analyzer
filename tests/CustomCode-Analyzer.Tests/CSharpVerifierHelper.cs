@@ -1,5 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
+using Microsoft.CodeAnalysis;
 
 namespace CustomCode_Analyzer.Tests
 {
@@ -11,12 +11,20 @@ namespace CustomCode_Analyzer.Tests
         {
             get
             {
-                return ImmutableDictionary.CreateRange(new[]
-                {
+                return ImmutableDictionary.CreateRange(
+                    new[]
+                    {
                         // Configure specific nullable warning codes as errors
-                        new KeyValuePair<string, ReportDiagnostic>("CS8632", ReportDiagnostic.Error),
-                        new KeyValuePair<string, ReportDiagnostic>("CS8669", ReportDiagnostic.Error)
-                    });
+                        new KeyValuePair<string, ReportDiagnostic>(
+                            "CS8632",
+                            ReportDiagnostic.Error
+                        ),
+                        new KeyValuePair<string, ReportDiagnostic>(
+                            "CS8669",
+                            ReportDiagnostic.Error
+                        ),
+                    }
+                );
             }
         }
     }
