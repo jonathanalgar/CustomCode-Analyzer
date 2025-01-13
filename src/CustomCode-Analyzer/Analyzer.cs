@@ -7,7 +7,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
-using OutSystems.ExternalLibraries.SDK;
 using static CustomCode_Analyzer.AttributeNames;
 
 namespace CustomCode_Analyzer
@@ -861,21 +860,19 @@ namespace CustomCode_Analyzer
             if (
                 (hasOSInterfaceAttribute || implementsOSInterface)
                 && methodSymbol.Name.StartsWith("_", StringComparison.Ordinal)
+                && syntaxRef.GetSyntax() is MethodDeclarationSyntax methodDeclSyntax
             )
             {
-                if (syntaxRef.GetSyntax() is MethodDeclarationSyntax methodDeclSyntax)
-                {
-                    var identifierLocation = methodDeclSyntax.Identifier.GetLocation();
+                var identifierLocation = methodDeclSyntax.Identifier.GetLocation();
 
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            NameBeginsWithUnderscoreRule,
-                            identifierLocation,
-                            "Method",
-                            methodSymbol.Name
-                        )
-                    );
-                }
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        NameBeginsWithUnderscoreRule,
+                        identifierLocation,
+                        "Method",
+                        methodSymbol.Name
+                    )
+                );
             }
 
             // Only check for by-ref parameters in the OSInterface itself (not the implementation)
@@ -1388,14 +1385,20 @@ namespace CustomCode_Analyzer
             if (type is null || dataType.Value is null)
                 return false;
 
-            // Convert the numeric underlying value to the OSDataType enum *name*,
+            // Convert the numeric underlying value to the OSDataType enum name,
             var numericValue = (int)dataType.Value;
-            var enumName = Enum.GetName(typeof(OSDataType), numericValue);
+            var enumName = Enum.GetName(typeof(TypeMappingHelper.OSDataType), numericValue);
 
             // If we can't map the numeric value to a valid OSDataType name
             if (string.IsNullOrEmpty(enumName))
             {
                 return true;
+            }
+
+            // Special type
+            if (enumName == nameof(TypeMappingHelper.OSDataType.InferredFromDotNetType))
+            {
+                return false;
             }
 
             // Now ask TypeMappingHelper for the expected .NET type name

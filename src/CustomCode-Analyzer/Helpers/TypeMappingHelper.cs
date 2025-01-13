@@ -11,6 +11,26 @@ namespace CustomCode_Analyzer
     public static class TypeMappingHelper
     {
         /// <summary>
+        /// A local copy of the OSDataType enum
+        /// </summary>
+        internal enum OSDataType
+        {
+            InferredFromDotNetType,
+            Text,
+            Integer,
+            LongInteger,
+            Decimal,
+            Boolean,
+            DateTime,
+            Date,
+            Time,
+            PhoneNumber,
+            Email,
+            BinaryData,
+            Currency
+        }
+
+        /// <summary>
         /// Maps <c>OSDataType</c> enum <b>names</b> (e.g., "Text", "Integer")
         /// to a tuple containing:
         /// <list type="bullet">

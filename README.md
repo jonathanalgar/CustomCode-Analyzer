@@ -10,7 +10,7 @@
 
 ![](https://github.com/jonathanalgar/CustomCode-Analyzer/blob/main/screenshot.png?raw=true)
 
-⚡ _Screenshot showing the development of an ODC External Library in Visual Studio Code. The **ODC Custom Code Analyzer** flags several rule violations in the Problems panel. A related Quick Fix menu is open for one rule violation, offering to "Fix this type mapping" so the field correctly matches its `OSDataType.PhoneNumber`._ ⚡ 
+⚡ _Screenshot showing the development of an ODC External Library in Visual Studio. The **ODC Custom Code Analyzer** flags several rule violations in the Problems panel. A related Quick Fix menu is open for one rule violation, offering to "Fix this type mapping" so the field correctly matches its `OSDataType.PhoneNumber`. You can get identical functionality in Visual Studio Code and Rider._  ⚡ 
 
 ## Overview
 

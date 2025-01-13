@@ -921,7 +921,7 @@ namespace TestNamespace
             );
         }
 
-        // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05014 - TODO: implement
+        // https://www.outsystems.com/tk/redirect?g=OS-ELG-MODL-05014 - not implementing
 
         // --------------- UnsupportedParameterTypeRule (OS-ELG-MODL-05015) --------
 
@@ -1297,6 +1297,24 @@ public struct TestStruct
             };
 
             await VerifyDiagnosticAndFix(source, expectedFixed, expectedDiagnostics);
+        }
+
+        [TestMethod]
+        public async Task UnsupportedTypeMappingRule_InGlobalScope_InferredFromDotNetType_NoDiagnostic()
+        {
+            var source = @"
+[OSStructure]
+public struct TestStruct
+{
+    [OSStructureField(DataType = OSDataType.InferredFromDotNetType)]
+    public int SomeValue; // Should not raise any diagnostic with InferredFromDotNetType
+}";
+
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(
+                source,
+                TestContext,
+                skipSDKreference: false
+            );
         }
 
         // --------------- MissingPublicImplementationRule (OS-ELG-MODL-05018) --------
