@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
 	<Metadata>
-		<Identity Id="CustomCode_Analyzer.Vsix.e1c79fe3-d19f-4bf9-9c0c-57ba1f95b494" Version="0.1.4" Language="en-US" Publisher="Jonathan Algar"/>
+		<Identity Id="CustomCode_Analyzer.Vsix.e1c79fe3-d19f-4bf9-9c0c-57ba1f95b494" Version="0.2.0" Language="en-US" Publisher="Jonathan Algar"/>
 		<DisplayName>ODC Custom Code Analyzer</DisplayName>
 		<Description xml:space="preserve">Get feedback on your OutSytems Developer Cloud (ODC) custom C# code as you code.</Description>
 		<MoreInfo>https://github.com/jonathanalgar/CustomCode-Analyzer</MoreInfo>
