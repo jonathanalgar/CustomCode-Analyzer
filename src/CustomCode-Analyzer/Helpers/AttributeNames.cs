@@ -7,7 +7,7 @@ namespace CustomCode_Analyzer
         /// <summary>
         /// Valid names for the OSInterface attribute.
         /// </summary>
-        public static readonly HashSet<string> OSInterfaceAttributeNames = new()
+        internal static readonly HashSet<string> OSInterfaceAttributeNames = new()
         {
             "OSInterfaceAttribute",
             "OSInterface",
@@ -16,7 +16,7 @@ namespace CustomCode_Analyzer
         /// <summary>
         /// Valid names for the OSStructure attribute.
         /// </summary>
-        public static readonly HashSet<string> OSStructureAttributeNames = new()
+        internal static readonly HashSet<string> OSStructureAttributeNames = new()
         {
             "OSStructureAttribute",
             "OSStructure",
@@ -25,7 +25,7 @@ namespace CustomCode_Analyzer
         /// <summary>
         /// Valid names for the OSStructureField attribute.
         /// </summary>
-        public static readonly HashSet<string> OSStructureFieldAttributeNames = new()
+        internal static readonly HashSet<string> OSStructureFieldAttributeNames = new()
         {
             "OSStructureFieldAttribute",
             "OSStructureField",
@@ -34,7 +34,7 @@ namespace CustomCode_Analyzer
         /// <summary>
         /// Valid names for the OSIgnore attribute.
         /// </summary>
-        public static readonly HashSet<string> OSIgnoreAttributeNames = new()
+        internal static readonly HashSet<string> OSIgnoreAttributeNames = new()
         {
             "OSIgnoreAttribute",
             "OSIgnore",

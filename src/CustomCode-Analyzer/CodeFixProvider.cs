@@ -512,24 +512,5 @@ namespace CustomCode_Analyzer
             return Normalize(currentType)
                 .Equals(Normalize(suggestedType), StringComparison.OrdinalIgnoreCase);
         }
-
-        /// <summary>
-        /// Provides a mapping from the 'OSDataType' enum’s name (like "Text", "Integer", "DateTime")
-        /// to a corresponding .NET type string (like "string", "int", "System.DateTime").
-        /// </summary>
-        private static string GetSuggestedType(string dataTypeName)
-        {
-            return dataTypeName switch
-            {
-                "Text" or "PhoneNumber" or "Email" => "string",
-                "Integer" => "int",
-                "LongInteger" => "long",
-                "Decimal" or "Currency" => "decimal",
-                "Boolean" => "bool",
-                "Date" or "DateTime" or "Time" => "DateTime",
-                "BinaryData" => "byte[]",
-                _ => null,
-            };
-        }
     }
 }

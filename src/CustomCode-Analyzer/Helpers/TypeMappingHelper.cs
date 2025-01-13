@@ -19,7 +19,7 @@ namespace CustomCode_Analyzer
         /// </list>
         /// This dictionary is used by <see cref="TryGetDotNetTypeName"/> and <see cref="TryGetAliasTypeName"/>.
         /// </summary>
-        public static readonly IReadOnlyDictionary<
+        internal static readonly IReadOnlyDictionary<
             string,
             (string DotNetType, string AliasType)
         > OSDataTypeMap = new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase)
@@ -47,7 +47,7 @@ namespace CustomCode_Analyzer
         ///   <item><description><c>"Integer"</c> → <c>"Int32"</c></description></item>
         /// </list>
         /// </summary>
-        public static bool TryGetDotNetTypeName(string dataTypeName, out string dotNetTypeName)
+        internal static bool TryGetDotNetTypeName(string dataTypeName, out string dotNetTypeName)
         {
             if (OSDataTypeMap.TryGetValue(dataTypeName, out var tuple))
             {
@@ -66,7 +66,7 @@ namespace CustomCode_Analyzer
         ///   <item><description><c>"Integer"</c> → <c>"int"</c></description></item>
         /// </list>
         /// </summary>
-        public static bool TryGetAliasTypeName(string dataTypeName, out string aliasType)
+        internal static bool TryGetAliasTypeName(string dataTypeName, out string aliasType)
         {
             if (OSDataTypeMap.TryGetValue(dataTypeName, out var tuple))
             {
