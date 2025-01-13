@@ -216,7 +216,7 @@ namespace CustomCode_Analyzer
         /// Adds the [OSStructure] attribute to a struct declaration that is missing it.
         /// This is called from the code fix for the MissingStructureDecoration diagnostic.
         /// </summary>
-        private async Task<Document> AddOSStructureAttributeAsync(
+        private static async Task<Document> AddOSStructureAttributeAsync(
             Document document,
             Location diagNode,
             CancellationToken cancellationToken
@@ -380,7 +380,7 @@ namespace CustomCode_Analyzer
         /// by converting the .NET type to a correct equivalent based on the
         /// DataType in [OSStructureField(DataType = ...)].
         /// </summary>
-        private async Task<Document> FixSingleTypeMappingAsync(
+        private static async Task<Document> FixSingleTypeMappingAsync(
             Document document,
             Location location,
             CancellationToken cancellationToken

@@ -1129,12 +1129,6 @@ namespace CustomCode_Analyzer
             }
             else if (osInterfaces.Count > 1)
             {
-                // Multiple OSInterface found
-                var firstSyntax = osInterfaces
-                    .Values.OrderBy(i => i.Syntax.GetLocation().GetLineSpan().StartLinePosition)
-                    .First()
-                    .Syntax;
-
                 // Create a comma-separated list of interface names
                 var interfaceNames = string.Join(", ", osInterfaces.Keys.OrderBy(n => n));
                 // Report diagnostic indicating multiple OSInterfaces
@@ -1423,7 +1417,7 @@ namespace CustomCode_Analyzer
         /// the OutSystems DataType specified in [OSStructureField(DataType = ...)].
         /// Returns <c>true</c> if the mapping is incompatible.
         /// </summary>
-        private bool HasIncompatibleDataTypeMapping(ITypeSymbol type, TypedConstant dataType)
+        private static bool HasIncompatibleDataTypeMapping(ITypeSymbol type, TypedConstant dataType)
         {
             if (type is null)
             {
