@@ -101,7 +101,7 @@ Add the [NuGet package](https://www.nuget.org/packages/CustomCode.Analyzer/) as 
 
 If your project references the External Libraries SDK (`OutSystems.ExternalLibraries.SDK`), the package should automatically start providing feedback on your code.
 
-The NuGet package cannot be automatically updated, so be sure to update regularlrly to get the latest features.
+The NuGet package cannot be automatically updated—be sure to update regularly to get the latest features.
 
 #### Visual Studio Code
 
