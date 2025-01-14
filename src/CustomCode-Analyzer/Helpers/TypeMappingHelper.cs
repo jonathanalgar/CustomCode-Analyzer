@@ -27,7 +27,7 @@ namespace CustomCode_Analyzer
             PhoneNumber,
             Email,
             BinaryData,
-            Currency
+            Currency,
         }
 
         /// <summary>

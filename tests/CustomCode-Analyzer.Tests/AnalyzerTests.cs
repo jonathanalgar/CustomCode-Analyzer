@@ -1302,7 +1302,8 @@ public struct TestStruct
         [TestMethod]
         public async Task UnsupportedTypeMappingRule_InGlobalScope_InferredFromDotNetType_NoDiagnostic()
         {
-            var source = @"
+            var source =
+                @"
 [OSStructure]
 public struct TestStruct
 {
