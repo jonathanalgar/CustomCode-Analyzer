@@ -82,6 +82,8 @@ The code fix suggestions appear as "lightbulb" actions (or "quick actions") in y
 
 You can use the auto-updating extension from the Visual Studio Marketplace. Simply [install the extension from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=JonathanAlgar.CustomCodeAnalyzer).
 
+> :bulb: Want your extension to stay up to date? Enable auto-updates in Visual Studio: Go to **Tools** > **Options** > **Environment** > **Extensions** and check **Automatically update extensions**.
+
 If your project references the External Libraries SDK (`OutSystems.ExternalLibraries.SDK`), the extension should automatically start providing feedback on your code. 
 
 To ensure real-time feedback for [compilation end phase](#analyzer-phases) rules (and not just at the point of build), you need to configure your Visual Studio's background analysis:
@@ -91,7 +93,6 @@ To ensure real-time feedback for [compilation end phase](#analyzer-phases) rules
 1. Set both **Run background code analysis** for and **Show compiler errors and warnings** to **Entire solution**.
 1. Make sure the **Run code analysis in separate process box** is unchecked. 
 
-> :bulb: To ensure the extension automatically updates to the latest version, you should enable auto-updates in Visual Studio. Go to **Tools** > **Options** > **Environment** > **Extensions** and make sure **Automatically update extensions** is checked.
 
 ### Others
 
