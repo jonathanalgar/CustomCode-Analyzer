@@ -28,8 +28,12 @@ jobs:
       run: |
         dotnet tool install --global dotnet-sonarscanner
         dotnet tool install --global dotnet-coverage
+        dotnet tool install --global csharpier
         echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
-      
+
+    - name: Check code formatting
+      run: dotnet csharpier --check .
+
     - name: Begin SonarCloud analysis
       run: dotnet sonarscanner begin /k:"jonathanalgar_CustomCode-Analyzer" /o:"jonathanalgar" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
 
