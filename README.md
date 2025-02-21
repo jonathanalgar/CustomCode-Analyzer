@@ -86,7 +86,7 @@ You can use the auto-updating extension from the Visual Studio Marketplace. Simp
 
 If your project references the External Libraries SDK (`OutSystems.ExternalLibraries.SDK`), the extension should automatically start providing feedback on your code. 
 
-To ensure real-time feedback for [compilation end phase](#analyzer-phases) rules (and not just at the point of build), you need to configure your Visual Studio's background analysis:
+To ensure real-time feedback for [compilation end phase](#code-analysis-phases) rules (and not just at the point of build), you need to configure your Visual Studio's background analysis:
 
 1. Select **Tools** > **Options**. 
 1. From the left menu select **C#** > **Advanced**. 
@@ -106,12 +106,10 @@ The NuGet package cannot be automatically updated—be sure to update regularly 
 
 #### Visual Studio Code
 
-To ensure real-time feedback for [compilation end phase](#analyzer-phases) rules (and not just at the point of build), you need to configure your Visual Studio's background analysis:
+To ensure real-time feedback for [compilation end phase](#code-analysis-phases) rules (and not just at the point of build), you need to configure your Visual Studio's background analysis:
 
 1. Open the command palette (_Ctrl+Shift+P_).
 1. Search for "roslyn". Set the **Dotnet › Background Analysis: Analyzer Diagnostics Scope** to **fullSolution**.
-
-> :bug: For the [code fix](#code-fixes-for-certain-rules) to work, you need to be switch to using the pre-release version of the C# extension. See [this issue](https://github.com/dotnet/vscode-csharp/issues/7802).
 
 ## TODO
 
