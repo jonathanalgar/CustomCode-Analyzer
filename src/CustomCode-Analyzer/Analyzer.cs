@@ -1300,15 +1300,13 @@ namespace CustomCode_Analyzer
 
             // Unwrap nullable types to check the underlying type
             ITypeSymbol typeToCheck = parameter.Type;
-            if (typeToCheck.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+            if (
+                typeToCheck.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
+                && typeToCheck is INamedTypeSymbol namedType
+                && namedType.TypeArguments.Length == 1
+            )
             {
-                if (
-                    typeToCheck is INamedTypeSymbol namedType
-                    && namedType.TypeArguments.Length == 1
-                )
-                {
-                    typeToCheck = namedType.TypeArguments[0];
-                }
+                typeToCheck = namedType.TypeArguments[0];
             }
 
             // Check if the (unwrapped) type is supported
