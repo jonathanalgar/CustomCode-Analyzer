@@ -1318,6 +1318,24 @@ public struct TestStruct
             );
         }
 
+        [TestMethod]
+        public async Task UnsupportedTypeMappingRule_ArrayOfBytes_NoDiagnostic()
+        {
+            var source =
+                @"
+[OSStructure]
+public struct TestStruct
+{
+    [OSStructureField(DataType = OSDataType.BinaryData)]
+    public byte[] RawBytes;
+}";
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(
+                source,
+                TestContext,
+                skipSDKreference: false
+            );
+        }
+
         // --------------- MissingPublicImplementationRule (OS-ELG-MODL-05018) --------
         [TestMethod]
         public async Task MissingPublicImplementationRule_InGlobalScope_ReportsWarning()

@@ -1443,9 +1443,14 @@ namespace CustomCode_Analyzer
                 return true;
             }
 
+            // If the type is an array, reconstruct the expected type name ("Byte[]" from type "Byte")
+            string actualTypeName = type is IArrayTypeSymbol arrayType
+                ? arrayType.ElementType.Name + "[]"
+                : type.Name;
+
             // Finally, compare the actual .NET type name with the expected
             // .NET type name from TypeMappingHelper
-            return !type.Name.Equals(expectedDotNetType, StringComparison.OrdinalIgnoreCase);
+            return !actualTypeName.Equals(expectedDotNetType, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
