@@ -849,8 +849,6 @@ namespace CustomCode_Analyzer
             var syntaxRef = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault();
             if (syntaxRef is null)
                 return;
-            if (syntaxRef.GetSyntax() is not MethodDeclarationSyntax methodSyntax)
-                return;
 
             var containingType = methodSymbol.ContainingType;
 
