@@ -1908,7 +1908,7 @@ public class Calculator : ICalculator
 
         // --------------------- InputSizeLimitRule --------------------------------
         [TestMethod]
-        public async Task InputSizeLimitRule_ShowsInfo()
+        public async Task InputSizeLimitRule_ReportsOnlyOneWarningForMultipleMethods()
         {
             var test =
                 @"
@@ -1918,18 +1918,21 @@ namespace TestNamespace
     public interface IDocumentProcessor
     {
         void ProcessDocument(byte[] documentData);
+        void ProcessAnotherDocument(byte[] otherData);
         void ProcessMetadata(string metadata);
     }
 
     public class DocumentProcessor : IDocumentProcessor
     {
         public void ProcessDocument(byte[] documentData) { }
+        public void ProcessAnotherDocument(byte[] otherData) { }
         public void ProcessMetadata(string metadata) { }
     }
 }";
+            // Expect only one diagnostic (highlighting the "byte[]" in the first method)
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.InputSizeLimit)
-                .WithSpan(7, 9, 7, 51);
+                .WithSpan(7, 30, 7, 36);
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(
                 test,
