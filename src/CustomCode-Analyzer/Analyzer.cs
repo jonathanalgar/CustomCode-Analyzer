@@ -838,7 +838,11 @@ namespace CustomCode_Analyzer
         /// <summary>
         /// Analyzes method declarations.
         /// <summary>
-        private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol, ConcurrentDictionary<SyntaxTree, bool> reportedInputSizeLimitDiagnostics)
+        private static void AnalyzeMethod(
+            SymbolAnalysisContext context,
+            IMethodSymbol methodSymbol,
+            ConcurrentDictionary<SyntaxTree, bool> reportedInputSizeLimitDiagnostics
+        )
         {
             var syntaxRef = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault();
             if (syntaxRef is null)
@@ -902,14 +906,23 @@ namespace CustomCode_Analyzer
                         }
                     }
 
-                    if (parameter.Type is IArrayTypeSymbol arrayType &&
-                        arrayType.ElementType.SpecialType == SpecialType.System_Byte)
+                    if (
+                        parameter.Type is IArrayTypeSymbol arrayType
+                        && arrayType.ElementType.SpecialType == SpecialType.System_Byte
+                    )
                     {
-                        var parameterSyntax = parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as ParameterSyntax;
+                        var parameterSyntax =
+                            parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
+                            as ParameterSyntax;
                         if (parameterSyntax?.Type != null)
                         {
                             var diagnosticLocation = parameterSyntax.Type.GetLocation();
-                            if (reportedInputSizeLimitDiagnostics.TryAdd(parameterSyntax.SyntaxTree, true))
+                            if (
+                                reportedInputSizeLimitDiagnostics.TryAdd(
+                                    parameterSyntax.SyntaxTree,
+                                    true
+                                )
+                            )
                             {
                                 context.ReportDiagnostic(
                                     Diagnostic.Create(InputSizeLimitRule, diagnosticLocation)
