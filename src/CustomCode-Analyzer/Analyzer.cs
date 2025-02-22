@@ -1323,11 +1323,22 @@ namespace CustomCode_Analyzer
                 return true;
             }
 
-            // Check if type is supported
+            // Unwrap nullable types to check the underlying type
+            ITypeSymbol typeToCheck = parameter.Type;
             if (
-                !ValidParameterSpecialTypes.Contains(parameter.Type.SpecialType)
+                typeToCheck.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
+                && typeToCheck is INamedTypeSymbol namedType
+                && namedType.TypeArguments.Length == 1
+            )
+            {
+                typeToCheck = namedType.TypeArguments[0];
+            }
+
+            // Check if the (unwrapped) type is supported
+            if (
+                !ValidParameterSpecialTypes.Contains(typeToCheck.SpecialType)
                 && !(
-                    parameter.Type is IArrayTypeSymbol arrayType
+                    typeToCheck is IArrayTypeSymbol arrayType
                     && arrayType.ElementType.SpecialType == SpecialType.System_Byte
                 )
             )
@@ -1347,8 +1358,7 @@ namespace CustomCode_Analyzer
                 return false;
             }
 
-            // Check if the default value is a literal expression
-            // This ensures that the default value is a compile-time constant
+            // Check if the default value is a literal expression (compile-time constant)
             return parameterSyntax.Default?.Value is LiteralExpressionSyntax;
         }
 
