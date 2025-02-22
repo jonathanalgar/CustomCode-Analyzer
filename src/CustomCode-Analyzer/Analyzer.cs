@@ -341,6 +341,7 @@ namespace CustomCode_Analyzer
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description: "External libraries have a 5.5MB total input size limit. For large binary files, expose them through a REST API endpoint in your app or provide a URL to download them.",
+            customTags: WellKnownDiagnosticTags.CompilationEnd,
             helpLinkUri: "https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#use-with-large-binary-files"
         );
 
@@ -418,9 +419,6 @@ namespace CustomCode_Analyzer
                     (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)
                 >();
 
-            // Thread-safe dictionary to record whether the InputSizeLimit diagnostic has been reported for each syntax tree (i.e. per file)
-            var reportedInputSizeLimitDiagnostics = new ConcurrentDictionary<SyntaxTree, bool>();
-
             // Register symbol actions for struct, interface, and class analysis
             compilationContext.RegisterSymbolAction(
                 context =>
@@ -444,13 +442,17 @@ namespace CustomCode_Analyzer
                 SymbolKind.NamedType
             );
 
+            // Dictionary tracking the earliest 'byte[]' parameter location per syntax tree
+            var candidateInputSizeLimitDiagnostics =
+                new ConcurrentDictionary<SyntaxTree, Location>();
+
             // Register a symbol action for method-level analysis
             compilationContext.RegisterSymbolAction(
-                ctx =>
+                context =>
                 {
-                    if (ctx.Symbol is IMethodSymbol methodSymbol)
+                    if (context.Symbol is IMethodSymbol methodSymbol)
                     {
-                        AnalyzeMethod(ctx, methodSymbol, reportedInputSizeLimitDiagnostics);
+                        AnalyzeMethod(context, methodSymbol, candidateInputSizeLimitDiagnostics);
                     }
                 },
                 SymbolKind.Method
@@ -458,9 +460,9 @@ namespace CustomCode_Analyzer
 
             // Register a compilation end action to check for any final conditions
             // that can only be verified after all symbols have been processed (for example, # of OSInterfaces).
-            compilationContext.RegisterCompilationEndAction(ctx =>
+            compilationContext.RegisterCompilationEndAction(context =>
             {
-                AnalyzeCompilationEnd(ctx, osInterfaces);
+                AnalyzeCompilationEnd(context, osInterfaces, candidateInputSizeLimitDiagnostics);
             });
         }
 
@@ -841,7 +843,7 @@ namespace CustomCode_Analyzer
         private static void AnalyzeMethod(
             SymbolAnalysisContext context,
             IMethodSymbol methodSymbol,
-            ConcurrentDictionary<SyntaxTree, bool> reportedInputSizeLimitDiagnostics
+            ConcurrentDictionary<SyntaxTree, Location> candidateInputSizeLimitDiagnostics
         )
         {
             var syntaxRef = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault();
@@ -916,18 +918,16 @@ namespace CustomCode_Analyzer
                             as ParameterSyntax;
                         if (parameterSyntax?.Type != null)
                         {
-                            var diagnosticLocation = parameterSyntax.Type.GetLocation();
-                            if (
-                                reportedInputSizeLimitDiagnostics.TryAdd(
-                                    parameterSyntax.SyntaxTree,
-                                    true
-                                )
-                            )
-                            {
-                                context.ReportDiagnostic(
-                                    Diagnostic.Create(InputSizeLimitRule, diagnosticLocation)
-                                );
-                            }
+                            var location = parameterSyntax.Type.GetLocation();
+                            // Update the candidate location for this file if the current 'byte[]' parameter appears earlier
+                            candidateInputSizeLimitDiagnostics.AddOrUpdate(
+                                parameterSyntax.SyntaxTree,
+                                location,
+                                (tree, existingLocation) =>
+                                    location.SourceSpan.Start < existingLocation.SourceSpan.Start
+                                        ? location
+                                        : existingLocation
+                            );
                         }
                         break;
                     }
@@ -1122,7 +1122,8 @@ namespace CustomCode_Analyzer
             ConcurrentDictionary<
                 string,
                 (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)
-            > osInterfaces
+            > osInterfaces,
+            ConcurrentDictionary<SyntaxTree, Location> candidateInputSizeLimitDiagnostics
         )
         {
             if (osInterfaces.Count == 0)
@@ -1234,6 +1235,11 @@ namespace CustomCode_Analyzer
                         )
                     );
                 }
+            }
+            // Report one InputSizeLimit diagnostic per file at the earliest recorded location
+            foreach (var kvp in candidateInputSizeLimitDiagnostics)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(InputSizeLimitRule, kvp.Value));
             }
         }
 
