@@ -336,7 +336,7 @@ namespace CustomCode_Analyzer
         private static readonly DiagnosticDescriptor InputSizeLimitRule = new(
             DiagnosticIds.InputSizeLimit,
             title: "Possible input size limit",
-            messageFormat: "This method accepts binary data. Note that external libraries have a 5.5MB total input size limit. For large files, use a REST API endpoint or file URL instead.",
+            messageFormat: "One or more methods accept binary data. Note that external libraries have a 5.5MB total input size limit. For large files, use a REST API endpoint or file URL instead.",
             category: Categories.Design,
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
@@ -418,6 +418,9 @@ namespace CustomCode_Analyzer
                     (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)
                 >();
 
+            // Thread-safe dictionary to record whether the InputSizeLimit diagnostic has been reported for each syntax tree (i.e. per file)
+            var reportedInputSizeLimitDiagnostics = new ConcurrentDictionary<SyntaxTree, bool>();
+
             // Register symbol actions for struct, interface, and class analysis
             compilationContext.RegisterSymbolAction(
                 context =>
@@ -443,11 +446,11 @@ namespace CustomCode_Analyzer
 
             // Register a symbol action for method-level analysis
             compilationContext.RegisterSymbolAction(
-                context =>
+                ctx =>
                 {
-                    if (context.Symbol is IMethodSymbol methodSymbol)
+                    if (ctx.Symbol is IMethodSymbol methodSymbol)
                     {
-                        AnalyzeMethod(context, methodSymbol);
+                        AnalyzeMethod(ctx, methodSymbol, reportedInputSizeLimitDiagnostics);
                     }
                 },
                 SymbolKind.Method
@@ -835,7 +838,7 @@ namespace CustomCode_Analyzer
         /// <summary>
         /// Analyzes method declarations.
         /// <summary>
-        private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol)
+        private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol, ConcurrentDictionary<SyntaxTree, bool> reportedInputSizeLimitDiagnostics)
         {
             var syntaxRef = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault();
             if (syntaxRef is null)
@@ -899,15 +902,20 @@ namespace CustomCode_Analyzer
                         }
                     }
 
-                    // Check for potential input size limit issues
-                    if (
-                        parameter.Type is IArrayTypeSymbol arrayType
-                        && arrayType.ElementType.SpecialType == SpecialType.System_Byte
-                    )
+                    if (parameter.Type is IArrayTypeSymbol arrayType &&
+                        arrayType.ElementType.SpecialType == SpecialType.System_Byte)
                     {
-                        context.ReportDiagnostic(
-                            Diagnostic.Create(InputSizeLimitRule, methodSyntax.GetLocation())
-                        );
+                        var parameterSyntax = parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as ParameterSyntax;
+                        if (parameterSyntax?.Type != null)
+                        {
+                            var diagnosticLocation = parameterSyntax.Type.GetLocation();
+                            if (reportedInputSizeLimitDiagnostics.TryAdd(parameterSyntax.SyntaxTree, true))
+                            {
+                                context.ReportDiagnostic(
+                                    Diagnostic.Create(InputSizeLimitRule, diagnosticLocation)
+                                );
+                            }
+                        }
                         break;
                     }
 
