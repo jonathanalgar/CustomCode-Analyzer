@@ -1778,25 +1778,25 @@ namespace Second
 public interface ITestInterface 
 {
     void TestMethod(string text = ""hello"",
-                    int number = 42,
+                    int? number = 42,
                     long bigNumber = 123L,
                     double precise = 3.14,
                     decimal money = 10.5m,
                     bool flag = true,
-                    DateTime date = default,
+                    DateTime? date = default,
                     string nullString = null);
 }
 
 public class Implementation : ITestInterface 
 {
     public void TestMethod(string text = ""hello"",
-                        int number = 42,
-                        long bigNumber = 123L,
-                        double precise = 3.14,
-                        decimal money = 10.5m,
-                        bool flag = true,
-                        DateTime date = default,
-                        string nullString = null) { }
+                    int? number = 42,
+                    long bigNumber = 123L,
+                    double precise = 3.14,
+                    decimal money = 10.5m,
+                    bool flag = true,
+                    DateTime? date = default,
+                    string nullString = null) { }
 }";
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(
                 test,
