@@ -45,6 +45,7 @@ namespace CustomCode_Analyzer
             public const string UnsupportedDefaultValue = "UnsupportedDefaultValue";
             public const string PotentialStatefulImplementation = "PotentialStatefulImplementation";
             public const string InputSizeLimit = "InputSizeLimit";
+            public const string CA2000NotEnabled = "CA2000NotEnabled";
         }
 
         /// <summary>
@@ -344,6 +345,18 @@ namespace CustomCode_Analyzer
             helpLinkUri: "https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#use-with-large-binary-files"
         );
 
+        private static readonly DiagnosticDescriptor CA2000NotEnabledRule = new(
+            DiagnosticIds.CA2000NotEnabled,
+            title: "CA2000 diagnosis not enabled",
+            messageFormat: "CA2000 diagnosis not enabled. Add 'dotnet_diagnostic.CA2000.severity = warning' to .editorconfig in project root folder.",
+            category: Categories.Design,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "CA2000 (Dispose objects before losing scope) is not enabled in .editorconfig.",
+            customTags: WellKnownDiagnosticTags.CompilationEnd,
+            helpLinkUri: "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2000"
+        );
+
         /// <summary>
         /// Returns the full set of DiagnosticDescriptors that this analyzer is capable of producing.
         /// </summary>
@@ -372,7 +385,8 @@ namespace CustomCode_Analyzer
                 UnsupportedParameterTypeRule,
                 UnsupportedDefaultValueRule,
                 PotentialStatefulImplementationRule,
-                InputSizeLimitRule
+                InputSizeLimitRule,
+                CA2000NotEnabledRule
             );
 
         /// <summary>
@@ -410,6 +424,26 @@ namespace CustomCode_Analyzer
 
             if (!isPackageReferenced)
                 return;
+
+            compilationContext.RegisterCompilationEndAction(compilationEndContext =>
+            {
+                // Get the first syntax tree from the compilation.
+                var firstTree = compilationEndContext.Compilation.SyntaxTrees.FirstOrDefault();
+                if (firstTree != null)
+                {
+                    var options = compilationEndContext.Options.AnalyzerConfigOptionsProvider.GetOptions(firstTree);
+                    options.TryGetValue("dotnet_diagnostic.CA2000.severity", out var ca2000Setting);
+
+                    // If the setting is missing, empty, or explicitly disabled, report
+                    if (string.IsNullOrEmpty(ca2000Setting) ||
+                        ca2000Setting.Equals("none", StringComparison.OrdinalIgnoreCase) ||
+                        ca2000Setting.Equals("silent", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var location = Location.Create(firstTree, new TextSpan(0, 0));
+                        compilationEndContext.ReportDiagnostic(Diagnostic.Create(CA2000NotEnabledRule, location));
+                    }
+                }
+            });
 
             // A thread-safe collection to track all OSInterface-decorated interfaces in the compilation
             var osInterfaces =
