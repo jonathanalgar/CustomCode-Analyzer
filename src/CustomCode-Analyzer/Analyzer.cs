@@ -887,8 +887,8 @@ namespace CustomCode_Analyzer
             {
                 foreach (var parameter in methodSymbol.Parameters)
                 {
-                    // Disallow reference-like (ref/out/in) parameters
-                    if (parameter.RefKind is RefKind.Ref or RefKind.Out or RefKind.In)
+                    // Disallow reference-like (ref/in) parameters
+                    if (parameter.RefKind is RefKind.Ref or RefKind.In)
                     {
                         var paramSyntax =
                             parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()

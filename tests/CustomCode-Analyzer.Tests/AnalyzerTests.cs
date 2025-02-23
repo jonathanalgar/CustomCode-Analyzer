@@ -1165,10 +1165,6 @@ public class TestImplementation : ITestInterface
                     .WithArguments("value", "UpdateValue"),
                 CSharpAnalyzerVerifier<Analyzer>
                     .Diagnostic(DiagnosticIds.ParameterByReference)
-                    .WithSpan(6, 19, 6, 34)
-                    .WithArguments("text", "GetValue"),
-                CSharpAnalyzerVerifier<Analyzer>
-                    .Diagnostic(DiagnosticIds.ParameterByReference)
                     .WithSpan(7, 20, 7, 36)
                     .WithArguments("number", "ReadValue"),
             };
@@ -1213,10 +1209,6 @@ namespace Implementation
                     .Diagnostic(DiagnosticIds.ParameterByReference)
                     .WithSpan(7, 26, 7, 39)
                     .WithArguments("value", "UpdateValue"),
-                CSharpAnalyzerVerifier<Analyzer>
-                    .Diagnostic(DiagnosticIds.ParameterByReference)
-                    .WithSpan(8, 23, 8, 38)
-                    .WithArguments("text", "GetValue"),
                 CSharpAnalyzerVerifier<Analyzer>
                     .Diagnostic(DiagnosticIds.ParameterByReference)
                     .WithSpan(9, 24, 9, 40)
