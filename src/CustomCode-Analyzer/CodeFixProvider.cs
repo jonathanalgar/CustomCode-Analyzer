@@ -5,13 +5,14 @@ using System.Composition;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CustomCode_Analyzer.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Editing;
-using static CustomCode_Analyzer.AttributeNames;
+using static CustomCode_Analyzer.Helpers.AttributeNames;
 
 namespace CustomCode_Analyzer
 {
@@ -29,15 +30,15 @@ namespace CustomCode_Analyzer
         /// Code fixes will only be offered for diagnostics with these IDs.
         /// </summary>
         public override ImmutableArray<string> FixableDiagnosticIds =>
-            ImmutableArray.Create(
+            [
                 Analyzer.DiagnosticIds.NameBeginsWithUnderscore,
                 Analyzer.DiagnosticIds.NonPublicInterface,
                 Analyzer.DiagnosticIds.UnsupportedTypeMapping,
                 Analyzer.DiagnosticIds.NonPublicStruct,
                 Analyzer.DiagnosticIds.NonPublicStructureField,
                 Analyzer.DiagnosticIds.NonPublicIgnored,
-                Analyzer.DiagnosticIds.MissingStructureDecoration
-            );
+                Analyzer.DiagnosticIds.MissingStructureDecoration,
+            ];
 
         /// <summary>
         /// Returns a <see cref="FixAllProvider"/> that can handle applying fixes across an entire solution,
@@ -240,8 +241,10 @@ namespace CustomCode_Analyzer
                 return document;
 
             var typeInfo = semanticModel.GetTypeInfo(parameterSyntax.Type, cancellationToken);
-            var structSymbol = typeInfo.Type as INamedTypeSymbol;
-            if (structSymbol is null || structSymbol.DeclaringSyntaxReferences.Length == 0)
+            if (
+                typeInfo.Type is not INamedTypeSymbol structSymbol
+                || structSymbol.DeclaringSyntaxReferences.Length == 0
+            )
                 return document;
 
             // Get the StructDeclarationSyntax for the referenced struct
@@ -276,7 +279,7 @@ namespace CustomCode_Analyzer
             {
                 // Otherwise, prepend this attribute before the first existing list
                 var firstList = structDecl.AttributeLists.First();
-                newStructDecl = structDecl.InsertNodesBefore(firstList, new[] { attributeList });
+                newStructDecl = structDecl.InsertNodesBefore(firstList, [attributeList]);
             }
 
             // Use a DocumentEditor to replace the old struct node with the new one containing[OSStructure]
