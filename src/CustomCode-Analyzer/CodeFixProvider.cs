@@ -241,7 +241,10 @@ namespace CustomCode_Analyzer
                 return document;
 
             var typeInfo = semanticModel.GetTypeInfo(parameterSyntax.Type, cancellationToken);
-            if (typeInfo.Type is not INamedTypeSymbol structSymbol || structSymbol.DeclaringSyntaxReferences.Length == 0)
+            if (
+                typeInfo.Type is not INamedTypeSymbol structSymbol
+                || structSymbol.DeclaringSyntaxReferences.Length == 0
+            )
                 return document;
 
             // Get the StructDeclarationSyntax for the referenced struct

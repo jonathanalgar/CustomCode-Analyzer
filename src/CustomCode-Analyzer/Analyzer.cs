@@ -1295,16 +1295,16 @@ namespace CustomCode_Analyzer
         /// Anything not in this set (and is not null for reference types) is considered invalid.
         /// </summary>
         private static readonly ImmutableHashSet<SpecialType> ValidParameterSpecialTypes =
-            [
-                SpecialType.System_String,
-                SpecialType.System_Int32,
-                SpecialType.System_Int64,
-                SpecialType.System_Single,
-                SpecialType.System_Double,
-                SpecialType.System_Decimal,
-                SpecialType.System_Boolean,
-                SpecialType.System_DateTime,
-            ];
+        [
+            SpecialType.System_String,
+            SpecialType.System_Int32,
+            SpecialType.System_Int64,
+            SpecialType.System_Single,
+            SpecialType.System_Double,
+            SpecialType.System_Decimal,
+            SpecialType.System_Boolean,
+            SpecialType.System_DateTime,
+        ];
 
         /// <summary>
         /// Checks whether a parameter's default value is a compile-time constant of a supported type.
