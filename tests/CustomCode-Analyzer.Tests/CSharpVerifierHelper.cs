@@ -12,8 +12,7 @@ namespace CustomCode_Analyzer.Tests
             get
             {
                 return ImmutableDictionary.CreateRange(
-                    new[]
-                    {
+                    [
                         // Configure specific nullable warning codes as errors
                         new KeyValuePair<string, ReportDiagnostic>(
                             "CS8632",
@@ -23,7 +22,7 @@ namespace CustomCode_Analyzer.Tests
                             "CS8669",
                             ReportDiagnostic.Error
                         ),
-                    }
+                    ]
                 );
             }
         }

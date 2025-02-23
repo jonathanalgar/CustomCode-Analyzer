@@ -8,6 +8,7 @@
 		<IsPackable>false</IsPackable>
 		<LangVersion>latest</LangVersion>
 		<RootNamespace>CustomCode_Analyzer.Tests</RootNamespace>
+		<ParallelizeTestCollections>true</ParallelizeTestCollections>
 	</PropertyGroup>
 
 	<ItemGroup>

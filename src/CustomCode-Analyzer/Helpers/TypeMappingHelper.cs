@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace CustomCode_Analyzer
+namespace CustomCode_Analyzer.Helpers
 {
     /// <summary>
     /// Provides a centralized mapping between OutSystems <c>OSDataType</c> enum names
