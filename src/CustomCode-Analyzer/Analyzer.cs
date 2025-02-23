@@ -3,11 +3,12 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using CustomCode_Analyzer.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
-using static CustomCode_Analyzer.AttributeNames;
+using static CustomCode_Analyzer.Helpers.AttributeNames;
 
 namespace CustomCode_Analyzer
 {
@@ -349,7 +350,7 @@ namespace CustomCode_Analyzer
         /// Returns the full set of DiagnosticDescriptors that this analyzer is capable of producing.
         /// </summary>
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-            ImmutableArray.Create(
+            [
                 NonPublicInterfaceRule,
                 NoSingleInterfaceRule,
                 ManyInterfacesRule,
@@ -373,8 +374,8 @@ namespace CustomCode_Analyzer
                 UnsupportedParameterTypeRule,
                 UnsupportedDefaultValueRule,
                 PotentialStatefulImplementationRule,
-                InputSizeLimitRule
-            );
+                InputSizeLimitRule,
+            ];
 
         /// <summary>
         /// Entry point for the analyzer. Initializes analysis by setting up compilation-level
@@ -1151,12 +1152,12 @@ namespace CustomCode_Analyzer
                 // Create a comma-separated list of interface names
                 var interfaceNames = string.Join(", ", osInterfaces.Keys.OrderBy(n => n));
                 // Report diagnostic indicating multiple OSInterfaces
-                foreach (var osInterface in osInterfaces.Values)
+                foreach (var (Syntax, Symbol) in osInterfaces.Values)
                 {
                     context.ReportDiagnostic(
                         Diagnostic.Create(
                             ManyInterfacesRule,
-                            osInterface.Syntax.Identifier.GetLocation(),
+                            Syntax.Identifier.GetLocation(),
                             interfaceNames
                         )
                     );
@@ -1216,9 +1217,7 @@ namespace CustomCode_Analyzer
                 t => t.TypeKind == TypeKind.Struct && HasAttribute(t, OSStructureAttributeNames)
             );
 
-#pragma warning disable RS1024
             var duplicates = allStructures.GroupBy(x => x.Name).Where(g => g.Count() > 1);
-#pragma warning restore RS1024
 
             foreach (var duplicate in duplicates)
             {
@@ -1296,16 +1295,16 @@ namespace CustomCode_Analyzer
         /// Anything not in this set (and is not null for reference types) is considered invalid.
         /// </summary>
         private static readonly ImmutableHashSet<SpecialType> ValidParameterSpecialTypes =
-            ImmutableHashSet.Create(
-                SpecialType.System_String,
-                SpecialType.System_Int32,
-                SpecialType.System_Int64,
-                SpecialType.System_Single,
-                SpecialType.System_Double,
-                SpecialType.System_Decimal,
-                SpecialType.System_Boolean,
-                SpecialType.System_DateTime
-            );
+        [
+            SpecialType.System_String,
+            SpecialType.System_Int32,
+            SpecialType.System_Int64,
+            SpecialType.System_Single,
+            SpecialType.System_Double,
+            SpecialType.System_Decimal,
+            SpecialType.System_Boolean,
+            SpecialType.System_DateTime,
+        ];
 
         /// <summary>
         /// Checks whether a parameter's default value is a compile-time constant of a supported type.
