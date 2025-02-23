@@ -1374,9 +1374,11 @@ namespace CustomCode_Analyzer
             }
 
             // If the type is nullable, unwrap it and check the underlying type
-            if (typeSymbol is INamedTypeSymbol named &&
-                named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T &&
-                named.TypeArguments.Length == 1)
+            if (
+                typeSymbol is INamedTypeSymbol named
+                && named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
+                && named.TypeArguments.Length == 1
+            )
             {
                 typeSymbol = named.TypeArguments[0];
             }
