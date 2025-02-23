@@ -1136,30 +1136,6 @@ public struct UnsupportedType { }
             );
         }
 
-        [TestMethod]
-        public async Task UnsupportedParameterTypeRule_InGlobalScope_PublicField_NullableStruct_NoWarning()
-        {
-            var test =
-                @"
-[OSStructure]
-public struct NestedStructure
-{
-    public int Value;
-}
-
-[OSStructure]
-public struct MyStructure
-{
-    public NestedStructure? NullableNested;    // Nullable struct OK
-}
-";
-            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(
-                test,
-                TestContext,
-                skipSDKreference: false
-            );
-        }
-
         // --------------- ParameterByReferenceRule (OS-ELG-MODL-05016) ------------
         [TestMethod]
         public async Task ParameterByReferenceRule_InGlobalScope_ReportsWarning()

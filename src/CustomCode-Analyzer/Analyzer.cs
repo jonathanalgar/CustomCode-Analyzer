@@ -1373,14 +1373,6 @@ namespace CustomCode_Analyzer
                 return false;
             }
 
-            // If the type is nullable, unwrap it and check the underlying type
-            if (typeSymbol is INamedTypeSymbol named &&
-                named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T &&
-                named.TypeArguments.Length == 1)
-            {
-                typeSymbol = named.TypeArguments[0];
-            }
-
             // Check for primitive or special types
             if (ValidParameterSpecialTypes.Contains(typeSymbol.SpecialType))
             {
