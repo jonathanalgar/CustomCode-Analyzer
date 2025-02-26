@@ -111,9 +111,13 @@ To ensure real-time feedback for [compilation end phase](#code-analysis-phases) 
 1. Open the command palette (_Ctrl+Shift+P_).
 1. Search for "roslyn". Set the **Dotnet › Background Analysis: Analyzer Diagnostics Scope** to **fullSolution**.
 
+#### Custom projects
+
+`CustomCode-Analyzer` was released to give you real-time feedback your C# code as you build an external library in your IDE of choice. But more generally `CustomCode-Analyzer` can be thought of as a way of locally validating an external library project at the point of build. This makes it a powerful component for projects that require automated validation—see, for example, [`CustomCode-Analyzer-Generator`](https://github.com/jonathanalgar/CustomCode-Analyzer-Generator).
+
 ## TODO
 
-See [here](https://github.com/jonathanalgar/CustomCode-Analyzer/issues?q=is%3Aopen+is%3Aissue+label%3Aenhancement).
+See [here](https://github.com/jonathanalgar/CustomCode-Analyzer/issues?q=is%3Aopen+is%3Aissue).
 
 ## Feedback and contributions
 
