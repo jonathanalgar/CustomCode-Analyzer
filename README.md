@@ -113,7 +113,7 @@ To ensure real-time feedback for [compilation end phase](#code-analysis-phases) 
 
 #### Custom projects
 
-`CustomCode-Analyzer` was released to give you real-time feedback your C# code as you build an external library in your IDE of choice. But more generally `CustomCode-Analyzer` can be thought of as a way of locally validating an external library project at the point of build. This makes it a powerful component for projects that require automated validation—see, for example, [`CustomCode-Analyzer-Generator`](https://github.com/jonathanalgar/CustomCode-Analyzer-Generator).
+`CustomCode-Analyzer` was released to give you real-time feedback on your C# code as you build an external library in your IDE of choice. But more generally, `CustomCode-Analyzer` can be thought of as a way of locally validating an external library project at the point of build. This makes it a powerful component for projects that require automated validation—see, for example, [`CustomCode-Analyzer-Generator`](https://github.com/jonathanalgar/CustomCode-Analyzer-Generator).
 
 ## TODO
 
