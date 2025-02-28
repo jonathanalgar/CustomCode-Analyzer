@@ -1136,6 +1136,30 @@ public struct UnsupportedType { }
             );
         }
 
+        [TestMethod]
+        public async Task UnsupportedParameterTypeRule_InGlobalScope_PublicField_NullableStruct_NoWarning()
+        {
+            var test =
+                @"
+[OSStructure]
+public struct NestedStructure
+{
+    public int Value;
+}
+
+[OSStructure]
+public struct MyStructure
+{
+    public NestedStructure? NullableNested;    // Nullable struct OK
+}
+";
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(
+                test,
+                TestContext,
+                skipSDKreference: false
+            );
+        }
+
         // --------------- ParameterByReferenceRule (OS-ELG-MODL-05016) ------------
         [TestMethod]
         public async Task ParameterByReferenceRule_InGlobalScope_ReportsWarning()
@@ -1163,10 +1187,6 @@ public class TestImplementation : ITestInterface
                     .Diagnostic(DiagnosticIds.ParameterByReference)
                     .WithSpan(5, 22, 5, 35)
                     .WithArguments("value", "UpdateValue"),
-                CSharpAnalyzerVerifier<Analyzer>
-                    .Diagnostic(DiagnosticIds.ParameterByReference)
-                    .WithSpan(6, 19, 6, 34)
-                    .WithArguments("text", "GetValue"),
                 CSharpAnalyzerVerifier<Analyzer>
                     .Diagnostic(DiagnosticIds.ParameterByReference)
                     .WithSpan(7, 20, 7, 36)
@@ -1213,10 +1233,6 @@ namespace Implementation
                     .Diagnostic(DiagnosticIds.ParameterByReference)
                     .WithSpan(7, 26, 7, 39)
                     .WithArguments("value", "UpdateValue"),
-                CSharpAnalyzerVerifier<Analyzer>
-                    .Diagnostic(DiagnosticIds.ParameterByReference)
-                    .WithSpan(8, 23, 8, 38)
-                    .WithArguments("text", "GetValue"),
                 CSharpAnalyzerVerifier<Analyzer>
                     .Diagnostic(DiagnosticIds.ParameterByReference)
                     .WithSpan(9, 24, 9, 40)
@@ -1311,6 +1327,24 @@ public struct TestStruct
     public int SomeValue; // Should not raise any diagnostic with InferredFromDotNetType
 }";
 
+            await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(
+                source,
+                TestContext,
+                skipSDKreference: false
+            );
+        }
+
+        [TestMethod]
+        public async Task UnsupportedTypeMappingRule_ArrayOfBytes_NoDiagnostic()
+        {
+            var source =
+                @"
+[OSStructure]
+public struct TestStruct
+{
+    [OSStructureField(DataType = OSDataType.BinaryData)]
+    public byte[] RawBytes;
+}";
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(
                 source,
                 TestContext,
@@ -1778,25 +1812,25 @@ namespace Second
 public interface ITestInterface 
 {
     void TestMethod(string text = ""hello"",
-                    int number = 42,
+                    int? number = 42,
                     long bigNumber = 123L,
                     double precise = 3.14,
                     decimal money = 10.5m,
                     bool flag = true,
-                    DateTime date = default,
+                    DateTime? date = default,
                     string nullString = null);
 }
 
 public class Implementation : ITestInterface 
 {
     public void TestMethod(string text = ""hello"",
-                        int number = 42,
-                        long bigNumber = 123L,
-                        double precise = 3.14,
-                        decimal money = 10.5m,
-                        bool flag = true,
-                        DateTime date = default,
-                        string nullString = null) { }
+                    int? number = 42,
+                    long bigNumber = 123L,
+                    double precise = 3.14,
+                    decimal money = 10.5m,
+                    bool flag = true,
+                    DateTime? date = default,
+                    string nullString = null) { }
 }";
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(
                 test,
@@ -1908,7 +1942,7 @@ public class Calculator : ICalculator
 
         // --------------------- InputSizeLimitRule --------------------------------
         [TestMethod]
-        public async Task InputSizeLimitRule_ShowsInfo()
+        public async Task InputSizeLimitRule_ReportsOnlyOneWarningForMultipleMethods()
         {
             var test =
                 @"
@@ -1918,18 +1952,21 @@ namespace TestNamespace
     public interface IDocumentProcessor
     {
         void ProcessDocument(byte[] documentData);
+        void ProcessAnotherDocument(byte[] otherData);
         void ProcessMetadata(string metadata);
     }
 
     public class DocumentProcessor : IDocumentProcessor
     {
         public void ProcessDocument(byte[] documentData) { }
+        public void ProcessAnotherDocument(byte[] otherData) { }
         public void ProcessMetadata(string metadata) { }
     }
 }";
+            // Expect only one diagnostic (highlighting the "byte[]" in the first method)
             var expected = CSharpAnalyzerVerifier<Analyzer>
                 .Diagnostic(DiagnosticIds.InputSizeLimit)
-                .WithSpan(7, 9, 7, 51);
+                .WithSpan(7, 30, 7, 36);
 
             await CSharpAnalyzerVerifier<Analyzer>.VerifyAnalyzerAsync(
                 test,

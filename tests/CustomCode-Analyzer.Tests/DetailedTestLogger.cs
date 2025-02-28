@@ -8,15 +8,10 @@ namespace CustomCode_Analyzer.Tests
     /// Provides detailed logging capabilities for analyzer tests.
     /// Implements ITestOutputHelper to capture and display test execution details.
     /// </summary>
-    public class DetailedTestLogger : ITestOutputHelper
+    public class DetailedTestLogger(TestContext testContext) : ITestOutputHelper
     {
-        private readonly TestContext TestContext;
+        private readonly TestContext TestContext = testContext;
         private readonly StringBuilder _output = new();
-
-        public DetailedTestLogger(TestContext testContext)
-        {
-            TestContext = testContext;
-        }
 
         public void WriteLine(string message)
         {

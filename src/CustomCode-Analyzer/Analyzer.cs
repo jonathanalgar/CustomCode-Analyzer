@@ -3,11 +3,12 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using CustomCode_Analyzer.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
-using static CustomCode_Analyzer.AttributeNames;
+using static CustomCode_Analyzer.Helpers.AttributeNames;
 
 namespace CustomCode_Analyzer
 {
@@ -337,11 +338,12 @@ namespace CustomCode_Analyzer
         private static readonly DiagnosticDescriptor InputSizeLimitRule = new(
             DiagnosticIds.InputSizeLimit,
             title: "Possible input size limit",
-            messageFormat: "This method accepts binary data. Note that external libraries have a 5.5MB total input size limit. For large files, use a REST API endpoint or file URL instead.",
+            messageFormat: "One or more methods accept binary data. Note that external libraries have a 5.5MB total input size limit. For large files, use a REST API endpoint or file URL instead.",
             category: Categories.Design,
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
             description: "External libraries have a 5.5MB total input size limit. For large binary files, expose them through a REST API endpoint in your app or provide a URL to download them.",
+            customTags: WellKnownDiagnosticTags.CompilationEnd,
             helpLinkUri: "https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#use-with-large-binary-files"
         );
 
@@ -361,7 +363,7 @@ namespace CustomCode_Analyzer
         /// Returns the full set of DiagnosticDescriptors that this analyzer is capable of producing.
         /// </summary>
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-            ImmutableArray.Create(
+            [
                 NonPublicInterfaceRule,
                 NoSingleInterfaceRule,
                 ManyInterfacesRule,
@@ -475,13 +477,17 @@ namespace CustomCode_Analyzer
                 SymbolKind.NamedType
             );
 
+            // Dictionary tracking the earliest 'byte[]' parameter location per syntax tree
+            var candidateInputSizeLimitDiagnostics =
+                new ConcurrentDictionary<SyntaxTree, Location>();
+
             // Register a symbol action for method-level analysis
             compilationContext.RegisterSymbolAction(
                 context =>
                 {
                     if (context.Symbol is IMethodSymbol methodSymbol)
                     {
-                        AnalyzeMethod(context, methodSymbol);
+                        AnalyzeMethod(context, methodSymbol, candidateInputSizeLimitDiagnostics);
                     }
                 },
                 SymbolKind.Method
@@ -489,9 +495,9 @@ namespace CustomCode_Analyzer
 
             // Register a compilation end action to check for any final conditions
             // that can only be verified after all symbols have been processed (for example, # of OSInterfaces).
-            compilationContext.RegisterCompilationEndAction(ctx =>
+            compilationContext.RegisterCompilationEndAction(context =>
             {
-                AnalyzeCompilationEnd(ctx, osInterfaces);
+                AnalyzeCompilationEnd(context, osInterfaces, candidateInputSizeLimitDiagnostics);
             });
         }
 
@@ -869,12 +875,14 @@ namespace CustomCode_Analyzer
         /// <summary>
         /// Analyzes method declarations.
         /// <summary>
-        private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol)
+        private static void AnalyzeMethod(
+            SymbolAnalysisContext context,
+            IMethodSymbol methodSymbol,
+            ConcurrentDictionary<SyntaxTree, Location> candidateInputSizeLimitDiagnostics
+        )
         {
             var syntaxRef = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault();
             if (syntaxRef is null)
-                return;
-            if (syntaxRef.GetSyntax() is not MethodDeclarationSyntax methodSyntax)
                 return;
 
             var containingType = methodSymbol.ContainingType;
@@ -914,8 +922,8 @@ namespace CustomCode_Analyzer
             {
                 foreach (var parameter in methodSymbol.Parameters)
                 {
-                    // Disallow reference-like (ref/out/in) parameters
-                    if (parameter.RefKind is RefKind.Ref or RefKind.Out or RefKind.In)
+                    // Disallow reference-like (ref/in) parameters
+                    if (parameter.RefKind is RefKind.Ref or RefKind.In)
                     {
                         var paramSyntax =
                             parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
@@ -933,15 +941,27 @@ namespace CustomCode_Analyzer
                         }
                     }
 
-                    // Check for potential input size limit issues
                     if (
                         parameter.Type is IArrayTypeSymbol arrayType
                         && arrayType.ElementType.SpecialType == SpecialType.System_Byte
                     )
                     {
-                        context.ReportDiagnostic(
-                            Diagnostic.Create(InputSizeLimitRule, methodSyntax.GetLocation())
-                        );
+                        var parameterSyntax =
+                            parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax()
+                            as ParameterSyntax;
+                        if (parameterSyntax?.Type != null)
+                        {
+                            var location = parameterSyntax.Type.GetLocation();
+                            // Update the candidate location for this file if the current 'byte[]' parameter appears earlier
+                            candidateInputSizeLimitDiagnostics.AddOrUpdate(
+                                parameterSyntax.SyntaxTree,
+                                location,
+                                (tree, existingLocation) =>
+                                    location.SourceSpan.Start < existingLocation.SourceSpan.Start
+                                        ? location
+                                        : existingLocation
+                            );
+                        }
                         break;
                     }
 
@@ -1135,7 +1155,8 @@ namespace CustomCode_Analyzer
             ConcurrentDictionary<
                 string,
                 (InterfaceDeclarationSyntax Syntax, INamedTypeSymbol Symbol)
-            > osInterfaces
+            > osInterfaces,
+            ConcurrentDictionary<SyntaxTree, Location> candidateInputSizeLimitDiagnostics
         )
         {
             if (osInterfaces.Count == 0)
@@ -1165,12 +1186,12 @@ namespace CustomCode_Analyzer
                 // Create a comma-separated list of interface names
                 var interfaceNames = string.Join(", ", osInterfaces.Keys.OrderBy(n => n));
                 // Report diagnostic indicating multiple OSInterfaces
-                foreach (var osInterface in osInterfaces.Values)
+                foreach (var (Syntax, Symbol) in osInterfaces.Values)
                 {
                     context.ReportDiagnostic(
                         Diagnostic.Create(
                             ManyInterfacesRule,
-                            osInterface.Syntax.Identifier.GetLocation(),
+                            Syntax.Identifier.GetLocation(),
                             interfaceNames
                         )
                     );
@@ -1230,9 +1251,7 @@ namespace CustomCode_Analyzer
                 t => t.TypeKind == TypeKind.Struct && HasAttribute(t, OSStructureAttributeNames)
             );
 
-#pragma warning disable RS1024
             var duplicates = allStructures.GroupBy(x => x.Name).Where(g => g.Count() > 1);
-#pragma warning restore RS1024
 
             foreach (var duplicate in duplicates)
             {
@@ -1247,6 +1266,11 @@ namespace CustomCode_Analyzer
                         )
                     );
                 }
+            }
+            // Report one InputSizeLimit diagnostic per file at the earliest recorded location
+            foreach (var kvp in candidateInputSizeLimitDiagnostics)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(InputSizeLimitRule, kvp.Value));
             }
         }
 
@@ -1305,16 +1329,16 @@ namespace CustomCode_Analyzer
         /// Anything not in this set (and is not null for reference types) is considered invalid.
         /// </summary>
         private static readonly ImmutableHashSet<SpecialType> ValidParameterSpecialTypes =
-            ImmutableHashSet.Create(
-                SpecialType.System_String,
-                SpecialType.System_Int32,
-                SpecialType.System_Int64,
-                SpecialType.System_Single,
-                SpecialType.System_Double,
-                SpecialType.System_Decimal,
-                SpecialType.System_Boolean,
-                SpecialType.System_DateTime
-            );
+        [
+            SpecialType.System_String,
+            SpecialType.System_Int32,
+            SpecialType.System_Int64,
+            SpecialType.System_Single,
+            SpecialType.System_Double,
+            SpecialType.System_Decimal,
+            SpecialType.System_Boolean,
+            SpecialType.System_DateTime,
+        ];
 
         /// <summary>
         /// Checks whether a parameter's default value is a compile-time constant of a supported type.
@@ -1332,11 +1356,22 @@ namespace CustomCode_Analyzer
                 return true;
             }
 
-            // Check if type is supported
+            // Unwrap nullable types to check the underlying type
+            ITypeSymbol typeToCheck = parameter.Type;
             if (
-                !ValidParameterSpecialTypes.Contains(parameter.Type.SpecialType)
+                typeToCheck.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
+                && typeToCheck is INamedTypeSymbol namedType
+                && namedType.TypeArguments.Length == 1
+            )
+            {
+                typeToCheck = namedType.TypeArguments[0];
+            }
+
+            // Check if the (unwrapped) type is supported
+            if (
+                !ValidParameterSpecialTypes.Contains(typeToCheck.SpecialType)
                 && !(
-                    parameter.Type is IArrayTypeSymbol arrayType
+                    typeToCheck is IArrayTypeSymbol arrayType
                     && arrayType.ElementType.SpecialType == SpecialType.System_Byte
                 )
             )
@@ -1356,8 +1391,7 @@ namespace CustomCode_Analyzer
                 return false;
             }
 
-            // Check if the default value is a literal expression
-            // This ensures that the default value is a compile-time constant
+            // Check if the default value is a literal expression (compile-time constant)
             return parameterSyntax.Default?.Value is LiteralExpressionSyntax;
         }
 
@@ -1370,6 +1404,16 @@ namespace CustomCode_Analyzer
             if (typeSymbol is null)
             {
                 return false;
+            }
+
+            // If the type is nullable, unwrap it and check the underlying type
+            if (
+                typeSymbol is INamedTypeSymbol named
+                && named.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
+                && named.TypeArguments.Length == 1
+            )
+            {
+                typeSymbol = named.TypeArguments[0];
             }
 
             // Check for primitive or special types
@@ -1442,9 +1486,14 @@ namespace CustomCode_Analyzer
                 return true;
             }
 
+            // If the type is an array, reconstruct the expected type name ("Byte[]" from type "Byte")
+            string actualTypeName = type is IArrayTypeSymbol arrayType
+                ? arrayType.ElementType.Name + "[]"
+                : type.Name;
+
             // Finally, compare the actual .NET type name with the expected
             // .NET type name from TypeMappingHelper
-            return !type.Name.Equals(expectedDotNetType, StringComparison.OrdinalIgnoreCase);
+            return !actualTypeName.Equals(expectedDotNetType, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
