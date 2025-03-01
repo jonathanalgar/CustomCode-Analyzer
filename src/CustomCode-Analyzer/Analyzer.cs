@@ -352,11 +352,11 @@ namespace CustomCode_Analyzer
             title: "CA2000 diagnosis not enabled",
             messageFormat: "CA2000 diagnosis not enabled. Add 'dotnet_diagnostic.CA2000.severity = warning' to .editorconfig in project root folder.",
             category: Categories.Design,
-            defaultSeverity: DiagnosticSeverity.Warning,
+            defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true,
             description: "CA2000 (Dispose objects before losing scope) is not enabled in .editorconfig.",
             customTags: WellKnownDiagnosticTags.CompilationEnd,
-            helpLinkUri: "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2000"
+            helpLinkUri: "https://success.outsystems.com/documentation/outsystems_developer_cloud/building_apps/extend_your_apps_with_custom_code/external_libraries_sdk_readme/#memory-usage"
         );
 
         /// <summary>
@@ -389,7 +389,7 @@ namespace CustomCode_Analyzer
                 PotentialStatefulImplementationRule,
                 InputSizeLimitRule,
                 CA2000NotEnabledRule
-            );
+            ];
 
         /// <summary>
         /// Entry point for the analyzer. Initializes analysis by setting up compilation-level
@@ -429,17 +429,39 @@ namespace CustomCode_Analyzer
 
             compilationContext.RegisterCompilationEndAction(compilationEndContext =>
             {
-                // Get the first syntax tree from the compilation.
-                var firstTree = compilationEndContext.Compilation.SyntaxTrees.FirstOrDefault();
-                if (firstTree != null)
-                {
-                    var options = compilationEndContext.Options.AnalyzerConfigOptionsProvider.GetOptions(firstTree);
-                    options.TryGetValue("dotnet_diagnostic.CA2000.severity", out var ca2000Setting);
+                // First check global options
+                var optionsProvider = compilationEndContext.Options.AnalyzerConfigOptionsProvider;
+                var globalOptions = optionsProvider.GlobalOptions;
 
-                    // If the setting is missing, empty, or explicitly disabled, report
-                    if (string.IsNullOrEmpty(ca2000Setting) ||
-                        ca2000Setting.Equals("none", StringComparison.OrdinalIgnoreCase) ||
-                        ca2000Setting.Equals("silent", StringComparison.OrdinalIgnoreCase))
+                // Check for global CA2000 setting
+                globalOptions.TryGetValue("dotnet_diagnostic.CA2000.severity", out var globalSetting);
+                bool foundValidSetting = !string.IsNullOrEmpty(globalSetting) &&
+                                       (globalSetting.Equals("warning", StringComparison.OrdinalIgnoreCase) ||
+                                        globalSetting.Equals("error", StringComparison.OrdinalIgnoreCase));
+
+                // If not found in global settings, check all syntax trees
+                if (!foundValidSetting && compilationEndContext.Compilation.SyntaxTrees.Any())
+                {
+                    foreach (var syntaxTree in compilationEndContext.Compilation.SyntaxTrees)
+                    {
+                        var options = optionsProvider.GetOptions(syntaxTree);
+                        options.TryGetValue("dotnet_diagnostic.CA2000.severity", out var ca2000Setting);
+
+                        if (!string.IsNullOrEmpty(ca2000Setting) &&
+                            (ca2000Setting.Equals("warning", StringComparison.OrdinalIgnoreCase) ||
+                             ca2000Setting.Equals("error", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            foundValidSetting = true;
+                            break;
+                        }
+                    }
+                }
+
+                // If no valid setting found in any tree or globally, report the diagnostic
+                if (!foundValidSetting)
+                {
+                    var firstTree = compilationEndContext.Compilation.SyntaxTrees.FirstOrDefault();
+                    if (firstTree != null)
                     {
                         var location = Location.Create(firstTree, new TextSpan(0, 0));
                         compilationEndContext.ReportDiagnostic(Diagnostic.Create(CA2000NotEnabledRule, location));
