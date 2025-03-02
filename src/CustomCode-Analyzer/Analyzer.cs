@@ -429,43 +429,31 @@ namespace CustomCode_Analyzer
 
             compilationContext.RegisterCompilationEndAction(compilationEndContext =>
             {
-                // First check global options
-                var optionsProvider = compilationEndContext.Options.AnalyzerConfigOptionsProvider;
-                var globalOptions = optionsProvider.GlobalOptions;
+                bool isConfiguredInAnyTree = false;
 
-                // Check for global CA2000 setting
-                globalOptions.TryGetValue("dotnet_diagnostic.CA2000.severity", out var globalSetting);
-                bool foundValidSetting = !string.IsNullOrEmpty(globalSetting) &&
-                                       (globalSetting.Equals("warning", StringComparison.OrdinalIgnoreCase) ||
-                                        globalSetting.Equals("error", StringComparison.OrdinalIgnoreCase));
-
-                // If not found in global settings, check all syntax trees
-                if (!foundValidSetting && compilationEndContext.Compilation.SyntaxTrees.Any())
+                foreach (var syntaxTree in compilationEndContext.Compilation.SyntaxTrees)
                 {
-                    foreach (var syntaxTree in compilationEndContext.Compilation.SyntaxTrees)
-                    {
-                        var options = optionsProvider.GetOptions(syntaxTree);
-                        options.TryGetValue("dotnet_diagnostic.CA2000.severity", out var ca2000Setting);
+                    var options = compilationEndContext.Options.AnalyzerConfigOptionsProvider.GetOptions(syntaxTree);
 
-                        if (!string.IsNullOrEmpty(ca2000Setting) &&
-                            (ca2000Setting.Equals("warning", StringComparison.OrdinalIgnoreCase) ||
-                             ca2000Setting.Equals("error", StringComparison.OrdinalIgnoreCase)))
-                        {
-                            foundValidSetting = true;
-                            break;
-                        }
+                    options.TryGetValue("dotnet_diagnostic.CA2000.severity", out var ca2000Setting);
+
+                    // Check if the setting exists and is set to warning or error
+                    if (!string.IsNullOrEmpty(ca2000Setting) &&
+                        (ca2000Setting.Equals("warning", StringComparison.OrdinalIgnoreCase) ||
+                         ca2000Setting.Equals("error", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        isConfiguredInAnyTree = true;
+                        break;
                     }
                 }
 
-                // If no valid setting found in any tree or globally, report the diagnostic
-                if (!foundValidSetting)
+                // If not configured in any tree, report the diagnostic
+                if (!isConfiguredInAnyTree && compilationEndContext.Compilation.SyntaxTrees.Any())
                 {
-                    var firstTree = compilationEndContext.Compilation.SyntaxTrees.FirstOrDefault();
-                    if (firstTree != null)
-                    {
-                        var location = Location.Create(firstTree, new TextSpan(0, 0));
-                        compilationEndContext.ReportDiagnostic(Diagnostic.Create(CA2000NotEnabledRule, location));
-                    }
+                    // Get a suitable location for the diagnostic (first tree)
+                    var firstTree = compilationEndContext.Compilation.SyntaxTrees.First();
+                    var location = Location.Create(firstTree, new TextSpan(0, 0));
+                    compilationEndContext.ReportDiagnostic(Diagnostic.Create(CA2000NotEnabledRule, location));
                 }
             });
 
